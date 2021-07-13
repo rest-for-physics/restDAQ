@@ -7,5 +7,4 @@ add_library(TRESTDAQ TRESTDAQ/TRESTDAQ.cxx TRESTDAQ/TRESTDAQDCC.cxx)
 
 target_include_directories(TRESTDAQ PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/TRESTDAQ ${CMAKE_CURRENT_SOURCE_DIR}/DCC ${rest_include_dirs} )
 
-target_link_libraries(TRESTDAQ DCC -lCore RestRaw)
-
+target_link_libraries(TRESTDAQ DCC ${lnklib} -lCore RestRaw)

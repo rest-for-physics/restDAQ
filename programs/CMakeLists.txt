@@ -1,6 +1,7 @@
+include_directories(${incdir})
 
 add_executable(DCCDAQ DCCDAQ.cxx)
-target_link_libraries ( DCCDAQ LINK_PUBLIC TRESTDAQ )
+target_link_libraries ( DCCDAQ LINK_PUBLIC TRESTDAQ ${lnklib} )
 
 add_executable(clientDCC clientDCC.cxx)
 target_link_libraries ( clientDCC LINK_PUBLIC TRESTDAQ )

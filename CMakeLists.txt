@@ -20,14 +20,23 @@ message(STATUS "Using REST PATH: " ${REST_PATH})
 if(NOT CMAKE_CXX_FLAGS)
 SET(CMAKE_CXX_FLAGS "-std=c++1y")
 endif()
+include(FindROOT)
 
-include_directories(daq/)
+#-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+#Set include and lib
+if(DEFINED rest_include_dirs)
+	set(incdir ${PROJECT_SOURCE_DIR}/include ${ROOT_INCLUDE_DIRS} ${rest_include_dirs} )
+else()
+	set(incdir ${PROJECT_SOURCE_DIR}/include ${ROOT_INCLUDE_DIRS} ${REST_PATH}/include )
+endif()
 
-link_directories(daq/)
+# WARNING. The best would be to check here if the library RestRaw is available!!
+# Still if we use -DREST_DAQ=ON at the framework compilation it will enable RawLib by default
+set(lnklib ${ROOT_LIBRARIES} -lGui RestRaw )
+string(STRIP "${lnklib}" lnklib)
 
 add_subdirectory(daq)
 add_subdirectory(programs)
-
 
 #----------------------------------------------------------------------------
 # Copy all scripts to the build directory, i.e. the directory in which we
