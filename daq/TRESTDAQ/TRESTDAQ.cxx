@@ -9,24 +9,14 @@ Author: JuanAn Garcia 18/05/2021
 
 #include "TRESTDAQ.h"
 
-
-TRESTDAQ::TRESTDAQ( const std::string  &cfgFileName ) : m_cfgFileName( cfgFileName ) {
-
-readConfig();
-initialize();
+TRESTDAQ::TRESTDAQ(const std::string& cfgFileName) : m_cfgFileName(cfgFileName) {
+    readConfig();
+    initialize();
 }
 
-TRESTDAQ::~TRESTDAQ () {
-//Cleanup if any
+TRESTDAQ::~TRESTDAQ() {
+    // Cleanup if any
 }
 
-void TRESTDAQ::readConfig() {
-
-
-
-}
-
-
-
-
+void TRESTDAQ::readConfig() {}
 

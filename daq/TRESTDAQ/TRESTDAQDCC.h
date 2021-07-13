@@ -15,68 +15,63 @@ Based on mclient program from Denis Calvet
 #include "TRESTDAQ.h"
 
 extern "C" {
+#include "after.h"
+#include "endofevent_packet.h"
+#include "ethpacket.h"
+#include "fem.h"
+#include "gblink.h"
 #include "platform_spec.h"
 #include "sock_util.h"
-#include "gblink.h"
-#include "after.h"
-#include "fem.h"
-#include "ethpacket.h"
-#include "endofevent_packet.h"
 }
 
-#include <iostream>
 #include <sys/socket.h>
+#include <iostream>
 
 namespace DCCPacket {
-  enum class packetReply {ERROR = -1, RETRY = 0, OK = 1 };
-  enum class packetType {ASCII =0, BINARY = 1};
-  const uint32_t MAX_EVENT_SIZE = 6*4*79*2*(512+32)*12;
-};
+enum class packetReply { ERROR = -1, RETRY = 0, OK = 1 };
+enum class packetType { ASCII = 0, BINARY = 1 };
+const uint32_t MAX_EVENT_SIZE = 6 * 4 * 79 * 2 * (512 + 32) * 12;
+};  // namespace DCCPacket
 
 class DCCEvent {
+   public:
+    DCCEvent(bool comp, const std::string& fileName);
+    ~DCCEvent();
 
-  public:
+    int ev_sz;
+    uint8_t* cur_ptr;
+    uint8_t data[DCCPacket::MAX_EVENT_SIZE];
+    FILE* fout;
+    bool compress;
+    bool fileOpen;
 
-  DCCEvent( bool comp, const std::string &fileName );
-  ~DCCEvent( );
-
-  int ev_sz;
-  uint8_t *cur_ptr;
-  uint8_t data[DCCPacket::MAX_EVENT_SIZE];
-  FILE *fout;
-  bool compress;
-  bool fileOpen;
-
-  void startEvent ( );
-  void addData(uint8_t *buf, int size);
-  void writeEvent( int evnb);
-
+    void startEvent();
+    void addData(uint8_t* buf, int size);
+    void writeEvent(int evnb);
 };
 
 class TRESTDAQDCC : public TRESTDAQ {
-
-  public:
-
+   public:
     virtual void configure();
     virtual void startDAQ();
     virtual void stopDAQ();
     virtual void initialize();
 
-  private:
+   private:
+    DCCPacket::packetReply SendCommand(const char* cmd,
+                                       DCCPacket::packetType type = DCCPacket::packetType::ASCII,
+                                       size_t nPackets = 1);
 
-  DCCPacket::packetReply SendCommand( const char* cmd, DCCPacket::packetType type = DCCPacket::packetType::ASCII, size_t nPackets = 1 );
-  
-  void waitForTrigger( );
+    void waitForTrigger();
 
-  //Event
-  DCCEvent *event;
-  int m_event_cnt;
+    // Event
+    DCCEvent* event;
+    int m_event_cnt;
 
-  //Socket
-  int m_sockfd;
-  struct sockaddr_in m_target;
-  struct sockaddr_in m_remote;
-
+    // Socket
+    int m_sockfd;
+    struct sockaddr_in m_target;
+    struct sockaddr_in m_remote;
 };
 
 #endif
