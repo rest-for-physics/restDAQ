@@ -11,7 +11,7 @@ Author: JuanAn Garcia 18/05/2021
 
 TRESTDAQ::TRESTDAQ(const std::string& cfgFileName) : m_cfgFileName(cfgFileName) {
     readConfig();
-    initialize();
+    // initialize();
 }
 
 TRESTDAQ::~TRESTDAQ() {
