@@ -84,6 +84,7 @@ extern "C" {
 #include <sys/shm.h>
 #include <sys/types.h>
 #include <sys/time.h>
+#include <chrono>
 
 /*******************************************************************************
  Constants types and global variables
@@ -169,6 +170,12 @@ typedef struct _DccSocket {
 } DccSocket;
 
 DccSocket dcc_socket;
+
+const Double_t getCurentTime(){
+
+return std::chrono::duration_cast <std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count()/1000000.0;
+
+}
 
 /*******************************************************************************
  Signal_Handler
@@ -569,8 +576,7 @@ printf("Starting data taking run\n");
       fSignalEvent->SetID(event_cnt);
       waitForTrigger();
         //Perform data acquisition phase, compress, accept size
-      time_t systime = time(NULL);
-      fSignalEvent->SetTime((Double_t)systime);
+      fSignalEvent->SetTime(getCurentTime());
         for(int fecN=5;fecN>=0;fecN--){
           if(daqMetadata->GetFECMask() & (1 << fecN) )continue;
             for (int asic=0;asic<4;asic++){
@@ -693,9 +699,7 @@ int main(int argc, char **argv)
     restRun->AddEventBranch(fSignalEvent);
 
     //fAnaEvent = new TRestRawSignalEvent();
-
-    time_t systime = time(NULL);
-    restRun->SetStartTimeStamp((Double_t)systime);
+    restRun->SetStartTimeStamp(getCurentTime());
 
     restRun->PrintMetadata();
     daqMetadata->PrintMetadata();
@@ -780,8 +784,7 @@ int main(int argc, char **argv)
         }
 
         cleanup(false);
-        systime = time(NULL);
-        restRun->SetEndTimeStamp((Double_t)systime);
+        restRun->SetEndTimeStamp(getCurentTime());
 	TString Filename = restRun->GetOutputFileName();
 
         restRun->UpdateOutputFile();
