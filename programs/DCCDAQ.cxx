@@ -206,7 +206,24 @@ int Event_Save(unsigned char *buf, int size)
 	  
 	  std::vector<Short_t> sData(512,0);
 	  
-	  int physChannel = fec * 72 * 4 + asic * 72 + channel;
+	  int physChannel = -10;
+        if (channel > 2 && channel < 15) {
+            physChannel = channel - 3;
+        } else if (channel > 15 && channel < 28) {
+            physChannel = channel - 4;
+        } else if (channel > 28 && channel < 53) {
+            physChannel = channel - 5;
+        } else if (channel > 53 && channel < 66) {
+            physChannel = channel - 6;
+        } else if (channel > 66) {
+            physChannel = channel - 7;
+        }
+
+        if (physChannel < 0)return -1;
+
+        physChannel = fec * 72 * 4 + asic * 72 + physChannel;
+
+	  if (daqMetadata->GetVerboseLevel() >= REST_Debug)std::cout<<"FEC "<<fec<<" asic "<<asic<<" channel "<<channel<<" physChann "<<physChannel<<"\n";
 
 	      unsigned short timeBin=0;
 	      for(int i=0;i<scnt;i++){
