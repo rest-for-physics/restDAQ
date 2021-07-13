@@ -117,7 +117,6 @@ char res_file[80] = {"dummyRun.acq"};
 
 int rem_ip_beg[4] = {192, 168, 10, 13};
 int rem_port      = REMOTE_DST_PORT;
-int verbose       = 4;
 int use_stdin     = 1;
 int probe_ct_pkt  = 0;
 int format_ver    = 2;
@@ -438,7 +437,7 @@ int GetPacket (int pckType) {
       if(cnt%1000==0)gettimeofday(&t_now, NULL);
       if (err == EWOULDBLOCK ||err == EAGAIN ){
         int tnts = (t_now.tv_sec - t_start.tv_sec)*1000000 + (t_now.tv_usec - t_start.tv_usec);
-         if(verbose>6 )fprintf(stderr, "socket() failed: %s\n", strerror(errno));
+         if (daqMetadata->GetVerboseLevel() >= REST_Extreme)fprintf(stderr, "socket() failed: %s\n", strerror(errno));
           if(tnts < RETRY_TIME_TO_TIMEOUT ){
             continue;
           } else {
@@ -465,10 +464,10 @@ int GetPacket (int pckType) {
 
       if ( (*buf_ual == '-') ) {//ERROR ASCII packet
         pckType = -1;
-        if(verbose>1)printf("ERROR packet: %s\n", buf_ual);
+        if(daqMetadata->GetVerboseLevel() >= REST_Debug)printf("ERROR packet: %s\n", buf_ual);
         errRep = 0;
       }
-      if(verbose>3){
+      if(daqMetadata->GetVerboseLevel() >= REST_Debug){
         if ( pckType >=0 ) {
           printf("Binary packet: %X\n", buf_ual);
         } else {
@@ -482,7 +481,7 @@ int GetPacket (int pckType) {
         Event_Save(buf_ual, length);
 
         DataPacket *data_pkt = (DataPacket*) buf_ual;
-        if(verbose>3)printf("Event saving packet %d for event %d, type %d\n", pckCnt, event_cnt, pckType);
+        if(daqMetadata->GetVerboseLevel() >= REST_Debug)printf("Event saving packet %d for event %d, type %d\n", pckCnt, event_cnt, pckType);
 
         // Check End Of Event
           if (GET_FRAME_TY_V2(ntohs(data_pkt->dcchdr)) & FRAME_FLAG_EOEV ||
@@ -498,7 +497,7 @@ int GetPacket (int pckType) {
       pckCnt++;
 
       // show packet if desired
-      if (verbose > 3){
+      if (daqMetadata->GetVerboseLevel() >= REST_Debug){
         printf("dcc().rep(): %d bytes of data \n",length);
 	  if ( pckType >= 0 ){
 	    DataPacket *data_pkt = (DataPacket*) buf_ual;
@@ -514,7 +513,7 @@ int GetPacket (int pckType) {
 
 int sendCmd(const char *cmd, int pckType){
 
-  if(verbose>2)printf("dcc().cmd(): command sent %s\n", cmd);
+  if(daqMetadata->GetVerboseLevel() >= REST_Debug)printf("dcc().cmd(): command sent %s\n", cmd);
 
   if ( sendto(dcc_socket.client, cmd, strlen(cmd), 0, (struct sockaddr*)&(dcc_socket.target), sizeof(struct sockaddr) )  == -1){
 	const int err = socket_get_error();
@@ -661,10 +660,12 @@ int main(int argc, char **argv)
 
     restRun = new TRestRun();
     restRun->LoadConfigFromFile(inputConfigFile);
-    TString rTag = restRun->GetRunTag();
-    restRun->SetRunType("restDAQ");
     daqMetadata = new TRestRawDAQMetadata( inputConfigFile );
     daqMetadata->PrintMetadata();
+    TString rTag = restRun->GetRunTag();
+    
+    if (rTag == "Null" || rTag == "") restRun->SetRunTag(daqMetadata->GetTitle());
+    restRun->SetRunType(daqMetadata->GetAcquisitionType());
 
     restRun->AddMetadata(daqMetadata);
     //restRun->PrintMetadata();
@@ -706,7 +707,7 @@ int main(int argc, char **argv)
        std::cout<<"Socket opened"<<std::endl; 
 
 	// Print setup
-	if (verbose)
+	if (daqMetadata->GetVerboseLevel() >= REST_Info)
 	{
 		printf("---------------------------------\n");
 		printf("Client version    : %d.%d\n", CLIENT_VERSION_MAJOR, CLIENT_VERSION_MINOR);
