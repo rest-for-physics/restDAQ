@@ -37,13 +37,12 @@ string(STRIP "${lnklib}" lnklib)
 
 add_subdirectory(daq)
 add_subdirectory(programs)
+add_subdirectory(gui)
 
 #----------------------------------------------------------------------------
-# Copy all scripts to the build directory, i.e. the directory in which we
-# build sphereSimLab. This is so that we can run the executable directly because it
-# relies on these scripts being in the current working directory.
-
-
+# Copy macros to the install directory
+file(GLOB_RECURSE MAC "${CMAKE_CURRENT_SOURCE_DIR}/macros/*")
+INSTALL(FILES ${MAC} DESTINATION ./macros/daq)
 
 #----------------------------------------------------------------------------
 # Install the executable to 'bin' directory under CMAKE_INSTALL_PREFIX

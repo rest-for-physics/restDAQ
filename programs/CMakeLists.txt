@@ -1,15 +1,12 @@
 include_directories(${incdir})
 
-add_executable(DCCDAQ DCCDAQ.cxx)
-target_link_libraries ( DCCDAQ LINK_PUBLIC TRESTDAQ ${lnklib} )
+add_executable(restDAQManager restDAQManager.cxx)
+target_link_libraries (restDAQManager LINK_PUBLIC RESTDAQ ${lnklib} )
 
-add_executable(clientDCC clientDCC.cxx)
-target_link_libraries ( clientDCC LINK_PUBLIC TRESTDAQ )
 
 install( DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
          DESTINATION .
          COMPONENT install
                  )
 
-install(TARGETS DCCDAQ DESTINATION bin)
-install(TARGETS clientDCC DESTINATION bin)
+install(TARGETS restDAQManager DESTINATION bin)
