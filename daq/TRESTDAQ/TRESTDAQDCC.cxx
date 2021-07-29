@@ -67,7 +67,7 @@ void TRESTDAQDCC::configure() {
 
 void TRESTDAQDCC::startDAQ() {
     auto rT = daq_metadata_types::acqTypes_map.find(std::string(GetDAQMetadata()->GetAcquisitionType()));
-    if (rT != daq_metadata_types::acqTypes_map.end()) {
+    if (rT == daq_metadata_types::acqTypes_map.end()) {
         std::cout << "Unknown acquisition type " << GetDAQMetadata()->GetAcquisitionType() << " skipping" << std::endl;
         std::cout << "Valid acq types:" << std::endl;
         for (auto& [name, t] : daq_metadata_types::acqTypes_map) std::cout << (int)t << " " << name << std::endl;
