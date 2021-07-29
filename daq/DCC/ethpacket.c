@@ -28,7 +28,7 @@
 
 #include <stdio.h>
 
-extern unsigned short Fec_Per_Fem;
+extern unsigned short Fec_Per_Fem = 6;
 
 /*******************************************************************************
  Arg12ToFecAsicChannel 

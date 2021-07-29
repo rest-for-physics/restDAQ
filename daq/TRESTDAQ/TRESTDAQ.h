@@ -15,9 +15,13 @@ To implement generic methods here
 #include <iostream>
 #include <string>
 
+#include "TRestRawSignalEvent.h"
+#include "TRestRawDAQMetadata.h"
+#include "TRestRun.h"
+
 class TRESTDAQ {
    public:
-    TRESTDAQ(const std::string& cfgFileName);
+    TRESTDAQ(TRestRun *rR, TRestRawDAQMetadata *dM);
     ~TRESTDAQ();
 
     // Pure virtual methods to start, stop and configure the DAQ
@@ -26,15 +30,21 @@ class TRESTDAQ {
     virtual void stopDAQ() = 0;
     virtual void initialize() = 0;
 
-    void readConfig();
+    inline static bool abrt=false;
+    inline static int event_cnt=0;
 
-    const std::string getCfgFile() { return m_cfgFileName; }
-    void setCfgFile(const std::string& cfgFileName) { m_cfgFileName = cfgFileName; }
+    static Double_t getCurrentTime();
 
-    bool abrt = false;
+    TRestRun *GetRestRun(){return restRun;}
+    TRestRawSignalEvent *GetSignalEvent(){return fSignalEvent;}
+    TRestRawDAQMetadata *GetDAQMetadata(){return daqMetadata;}
+    void FillTree();
 
    private:
-    std::string m_cfgFileName;
+    TRestRun* restRun;
+    TRestRawDAQMetadata *daqMetadata;
+    TRestRawSignalEvent *fSignalEvent;
+
 };
 
 #endif
