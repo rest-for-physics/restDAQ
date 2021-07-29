@@ -5,6 +5,6 @@
 #pragma link off all functions;
 #pragma link C++ nestedclasses;
 
-#pragma link C++ class TRestDAQGUI+;
+#pragma link C++ class TRestDAQGUI + ;
 
 #endif

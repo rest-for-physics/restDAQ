@@ -14,14 +14,12 @@ Author: JuanAn Garcia 18/05/2021
 
 class TRESTDAQDummy : public TRESTDAQ {
    public:
-    TRESTDAQDummy(TRestRun *rR, TRestRawDAQMetadata *dM);
-   
+    TRESTDAQDummy(TRestRun* rR, TRestRawDAQMetadata* dM);
+
     virtual void configure();
     virtual void startDAQ();
     virtual void stopDAQ();
     virtual void initialize();
-    
 };
 
 #endif
-

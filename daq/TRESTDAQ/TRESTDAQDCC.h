@@ -25,6 +25,7 @@ extern "C" {
 }
 
 #include <sys/socket.h>
+
 #include <iostream>
 
 namespace DCCPacket {
@@ -34,25 +35,24 @@ const uint32_t MAX_EVENT_SIZE = 6 * 4 * 79 * 2 * (512 + 32) * 12;
 };  // namespace DCCPacket
 
 class DccSocket {
-  public:
-  int client;
-  struct sockaddr_in target;
-  unsigned char* target_adr;
+   public:
+    int client;
+    struct sockaddr_in target;
+    unsigned char* target_adr;
 
-  struct sockaddr_in remote;
-  unsigned int remote_size;
-  int rem_port;
-  
-  void Close();
-  void Clear();
-  void Open(int *rem_ip_base, int rpt);
-  
+    struct sockaddr_in remote;
+    unsigned int remote_size;
+    int rem_port;
+
+    void Close();
+    void Clear();
+    void Open(int* rem_ip_base, int rpt);
 };
 
 class TRESTDAQDCC : public TRESTDAQ {
    public:
-    TRESTDAQDCC(TRestRun *rR, TRestRawDAQMetadata *dM);
-   
+    TRESTDAQDCC(TRestRun* rR, TRestRawDAQMetadata* dM);
+
     virtual void configure();
     virtual void startDAQ();
     virtual void stopDAQ();
@@ -64,15 +64,15 @@ class TRESTDAQDCC : public TRESTDAQ {
     DCCPacket::packetReply SendCommand(const char* cmd, DCCPacket::packetType type = DCCPacket::packetType::ASCII, size_t nPackets = 1);
 
     void waitForTrigger();
-    void saveEvent(unsigned char *buf, int size);
+    void saveEvent(unsigned char* buf, int size);
 
-    //TODO GetChannels from decoding file?
+    // TODO GetChannels from decoding file?
     int startFEC;
     int endFEC;
     int chStart;
     int chEnd;
     int nFECs;
-    int nASICs =4;
+    int nASICs = 4;
 
     const int REMOTE_DST_PORT = 1122;
 
@@ -81,4 +81,3 @@ class TRESTDAQDCC : public TRESTDAQ {
 };
 
 #endif
-
