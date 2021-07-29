@@ -8,11 +8,11 @@
  the messages sent by the DCC to the client PC over an Ethernet link.
 
  Author:      D. Calvet,        calvet@hep.saclay.cea.fr
-              
+
 
  History:
   December 2009: created from content extracted in gblink.h
-  
+
 *******************************************************************************/
 #ifndef ETHPACKET_H
 #define ETHPACKET_H

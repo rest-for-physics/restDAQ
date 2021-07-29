@@ -15,13 +15,13 @@ To implement generic methods here
 #include <iostream>
 #include <string>
 
-#include "TRestRawSignalEvent.h"
 #include "TRestRawDAQMetadata.h"
+#include "TRestRawSignalEvent.h"
 #include "TRestRun.h"
 
 class TRESTDAQ {
    public:
-    TRESTDAQ(TRestRun *rR, TRestRawDAQMetadata *dM);
+    TRESTDAQ(TRestRun* rR, TRestRawDAQMetadata* dM);
     ~TRESTDAQ();
 
     // Pure virtual methods to start, stop and configure the DAQ
@@ -30,22 +30,20 @@ class TRESTDAQ {
     virtual void stopDAQ() = 0;
     virtual void initialize() = 0;
 
-    inline static bool abrt=false;
-    inline static int event_cnt=0;
+    inline static bool abrt = false;
+    inline static int event_cnt = 0;
 
     static Double_t getCurrentTime();
 
-    TRestRun *GetRestRun(){return restRun;}
-    TRestRawSignalEvent *GetSignalEvent(){return fSignalEvent;}
-    TRestRawDAQMetadata *GetDAQMetadata(){return daqMetadata;}
+    TRestRun* GetRestRun() { return restRun; }
+    TRestRawSignalEvent* GetSignalEvent() { return fSignalEvent; }
+    TRestRawDAQMetadata* GetDAQMetadata() { return daqMetadata; }
     void FillTree();
 
    private:
     TRestRun* restRun;
-    TRestRawDAQMetadata *daqMetadata;
-    TRestRawSignalEvent *fSignalEvent;
-
+    TRestRawDAQMetadata* daqMetadata;
+    TRestRawSignalEvent* fSignalEvent;
 };
 
 #endif
-

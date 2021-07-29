@@ -8,7 +8,7 @@
 receiving packets over a (Gigabit) link (empty under Linux).
 
  Author:      D. Calvet,        calvet@hep.saclay.cea.fr
-              
+
 
  History:
   September 2007: created
@@ -18,11 +18,11 @@ receiving packets over a (Gigabit) link (empty under Linux).
 #define GBLINK_PS_H
 
 typedef struct _Gblink {
-	int id;
+    int id;
 } Gblink;
 
 typedef struct _GblinkParam {
-	int id;
+    int id;
 } GblinkParam;
 
 #endif

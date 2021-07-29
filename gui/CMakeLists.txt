@@ -14,10 +14,10 @@ target_include_directories(RestDAQGUI PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${rest_
 
 target_link_libraries(RestDAQGUI RESTDAQ ${lnklib} -lCore -lGui -lpthread RestRaw)
 
-install( DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-         DESTINATION .
-         COMPONENT install
-                 )
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        DESTINATION .
+        COMPONENT install
+        )
 
 install(TARGETS RestDAQGUI DESTINATION lib)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libTRestDAQGUI_rdict.pcm DESTINATION lib)
