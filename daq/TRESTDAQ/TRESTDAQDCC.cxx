@@ -210,6 +210,8 @@ DCCPacket::packetReply TRESTDAQDCC::SendCommand(const char* cmd, DCCPacket::pack
         return DCCPacket::packetReply::ERROR;
     }
 
+      if (GetDAQMetadata()->GetVerboseLevel() >= REST_Debug)std::cout<<"Command sent "<<cmd<<std::endl;
+
     // wait for incoming messages
     bool done = false;
     int pckCnt = 1;
@@ -259,8 +261,8 @@ DCCPacket::packetReply TRESTDAQDCC::SendCommand(const char* cmd, DCCPacket::pack
         if (GetDAQMetadata()->GetVerboseLevel() >= REST_Debug) {
             printf("dcc().rep(): %d bytes of data \n", length);
             if (pckType == DCCPacket::packetType::BINARY) {
-                DataPacket* data_pkt = (DataPacket*)buf_ual;
-                DataPacket_Print(data_pkt);
+                DataPacket* data_pk = (DataPacket*)buf_ual;
+                DataPacket_Print(data_pk);
             } else {
                 *(buf_ual + length) = '\0';
                 printf("dcc().rep(): %s", buf_ual);
@@ -276,17 +278,20 @@ DCCPacket::packetReply TRESTDAQDCC::SendCommand(const char* cmd, DCCPacket::pack
 
             DataPacket* data_pkt = (DataPacket*)buf_ual;
 
-            saveEvent(buf_ual, length);
+            if(nPackets==0)saveEvent(buf_ual, length);
 
             // Check End Of Event
             if (GET_FRAME_TY_V2(ntohs(data_pkt->dcchdr)) & FRAME_FLAG_EOEV || GET_FRAME_TY_V2(ntohs(data_pkt->dcchdr)) & FRAME_FLAG_EORQ ||
-                pckCnt >= nPackets) {
+                (nPackets >0 && pckCnt >= nPackets) ) {
                 done = true;
             }
 
         } else {
             done = true;  // ASCII Packet, check response?
         }
+
+        if (GetDAQMetadata()->GetVerboseLevel() >= REST_Debug)
+          std::cout <<"Packets received "<<pckCnt<<" expected "<<nPackets<<std::endl;
 
         pckCnt++;
     }
@@ -301,8 +306,10 @@ void TRESTDAQDCC::waitForTrigger() {  // Wait till trigger is acquired
 }
 
 void DccSocket::Open(int* rem_ip_base, int rpt) {
+    
+
     // Initialize socket
-    if (client = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP) == -1) {
+    if ( (client = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP) ) == -1) {
         std::cerr << "Socket open failed: " << strerror(errno) << std::endl;
         // Throw?
     }

@@ -61,7 +61,7 @@ class TRESTDAQDCC : public TRESTDAQ {
    private:
     void pedestal();
     void dataTaking();
-    DCCPacket::packetReply SendCommand(const char* cmd, DCCPacket::packetType type = DCCPacket::packetType::ASCII, size_t nPackets = 1);
+    DCCPacket::packetReply SendCommand(const char* cmd, DCCPacket::packetType type = DCCPacket::packetType::ASCII, size_t nPackets = 0);
 
     void waitForTrigger();
     void saveEvent(unsigned char* buf, int size);
@@ -69,9 +69,9 @@ class TRESTDAQDCC : public TRESTDAQ {
     // TODO GetChannels from decoding file?
     int startFEC;
     int endFEC;
-    int chStart;
-    int chEnd;
-    int nFECs;
+    int chStart=3;
+    int chEnd=78;
+    int nFECs=0;
     int nASICs = 4;
 
     const int REMOTE_DST_PORT = 1122;
