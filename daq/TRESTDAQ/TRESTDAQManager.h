@@ -48,6 +48,8 @@ class TRESTDAQManager {
     static bool GetSharedMemory(int& sid, sharedMemoryStruct** sM, int flag);
     static void DetachSharedMemory(sharedMemoryStruct** sM);
 
+    static int GetFileSize(const std::string &filename);
+
     // Control commands
     static void StopRun();
     static void ExitManager();

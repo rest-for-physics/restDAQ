@@ -28,7 +28,9 @@ void TRESTDAQDCC::configure() {
     std::cout << "Configuring readout" << std::endl;
 
     char cmd[200];
-    SendCommand("fem 0");  // Needed?
+    if( SendCommand("fem 0") == DCCPacket::packetReply::ERROR)//Check first command, thow exception if DCC doesn't reply
+      throw (TRESTDAQException("I didn't get reply from the DCC, please check the network"));
+
     // SendCommand("triglat 3 2000");//Trigger latency
     SendCommand("pokes 0x8 0x0000");                                // Disable pulser
     SendCommand("sca cnt 0x1ff");                                   // Set 511 bin count, make configurable?
@@ -206,8 +208,9 @@ void TRESTDAQDCC::saveEvent(unsigned char* buf, int size) {
 
 DCCPacket::packetReply TRESTDAQDCC::SendCommand(const char* cmd, DCCPacket::packetType pckType, size_t nPackets) {
     if (sendto(dcc_socket.client, cmd, strlen(cmd), 0, (struct sockaddr*)&(dcc_socket.target), sizeof(struct sockaddr)) == -1) {
-        std::cerr << "sendto failed: " << strerror(errno) << std::endl;
-        return DCCPacket::packetReply::ERROR;
+        std::string error ="sendto failed: " + std::string(strerror(errno));
+        throw (TRESTDAQException(error));
+        //return DCCPacket::packetReply::ERROR;
     }
 
       if (GetDAQMetadata()->GetVerboseLevel() >= REST_Debug)std::cout<<"Command sent "<<cmd<<std::endl;
@@ -241,10 +244,15 @@ DCCPacket::packetReply TRESTDAQDCC::SendCommand(const char* cmd, DCCPacket::pack
                 }
             }
             cnt++;
-        } while (length < 0 && duration.count() < 10);
+        } while (length < 0 && duration.count() < 10 && !abrt);
 
-        if (duration.count() > 10) {
-            std::cerr << "No reply after " << duration.count() << "seconds, missing packets are expected" << std::endl;
+        if(abrt){
+          std::cerr << "Run aborted" << std::endl;
+            return DCCPacket::packetReply::ERROR;
+        }
+
+        if (duration.count() >= 10 || length < 0) {
+            std::cerr << "No reply after " << duration.count() << " seconds, missing packets are expected" << std::endl;
             return DCCPacket::packetReply::ERROR;
         }
 
@@ -290,9 +298,6 @@ DCCPacket::packetReply TRESTDAQDCC::SendCommand(const char* cmd, DCCPacket::pack
             done = true;  // ASCII Packet, check response?
         }
 
-        if (GetDAQMetadata()->GetVerboseLevel() >= REST_Debug)
-          std::cout <<"Packets received "<<pckCnt<<" expected "<<nPackets<<std::endl;
-
         pckCnt++;
     }
     return DCCPacket::packetReply::OK;
@@ -302,35 +307,37 @@ void TRESTDAQDCC::waitForTrigger() {  // Wait till trigger is acquired
     DCCPacket::packetReply reply;
     do {
         reply = SendCommand("wait 1000000");                   // Wait for the event to be acquired
-    } while (reply == DCCPacket::packetReply::RETRY && abrt);  // Infinite loop till aborted or wait succeed
+    } while (reply == DCCPacket::packetReply::RETRY && !abrt);  // Infinite loop till aborted or wait succeed
 }
 
 void DccSocket::Open(int* rem_ip_base, int rpt) {
-    
 
     // Initialize socket
     if ( (client = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP) ) == -1) {
-        std::cerr << "Socket open failed: " << strerror(errno) << std::endl;
-        // Throw?
+        std::string error ="Socket open failed: " + std::string(strerror(errno));
+        throw (TRESTDAQException(error));
     }
 
     // Set socket in non-blocking mode
     int nb = 1;
     if (ioctlsocket(client, FIONBIO, &nb) != 0) {
-        std::cerr << "ioctlsocket failed: " << strerror(errno) << std::endl;
+        std::string error ="ioctlsocket failed: " + std::string(strerror(errno));
+        throw (TRESTDAQException(error));
     }
 
     socklen_t optlen = sizeof(int);
     int rcvsz_req = 200 * 1024;
     // Set receive socket size
     if (setsockopt(client, SOL_SOCKET, SO_RCVBUF, &rcvsz_req, optlen) != 0) {
-        std::cerr << "setsockopt failed: " << strerror(errno) << std::endl;
+        std::string error ="setsockopt failed: " + std::string(strerror(errno));
+        throw (TRESTDAQException(error));
     }
 
     int rcvsz_done;
     // Get receive socket size
     if (getsockopt(client, SOL_SOCKET, SO_RCVBUF, &rcvsz_done, &optlen) != 0) {
-        std::cerr << "getsockopt failed: " << strerror(errno) << std::endl;
+        std::string error ="getsockopt failed: " + std::string(strerror(errno));
+        throw (TRESTDAQException(error));
     }
 
     struct timeval timeout;

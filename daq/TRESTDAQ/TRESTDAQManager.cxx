@@ -68,6 +68,7 @@ void TRESTDAQManager::dataTaking() {
         std::cout << "Setting " << sM->nEvents << " events to be acquired" << std::endl;
     } else {
         std::cout << "Setting " << daqMetadata.GetNEvents() << " events to be acquired from config file" << std::endl;
+        sM->nEvents = daqMetadata.GetNEvents();
     }
 
     TRestRun restRun;
@@ -97,6 +98,7 @@ void TRESTDAQManager::dataTaking() {
         std::cout << "Valid electronics types:" << std::endl;
         for (const auto& [name, t] : daq_metadata_types::electronicsTypes_map) std::cout << (int)t << " " << name << std::endl;
     } else {
+      try{
         std::unique_ptr<TRESTDAQ> daq;
         bool impl = true;
         if (eT->second == daq_metadata_types::electronicsTypes::DUMMY) {
@@ -112,9 +114,15 @@ void TRESTDAQManager::dataTaking() {
             TRESTDAQ::abrt = false;
             daq->configure();
             std::cout << "Electronics configured, starting data taking run type " << std::endl;
-            daq->startDAQ();  // Should wait till completion or stopped
-            daq->stopDAQ();
+
+              daq->startDAQ();  // Should wait till completion or stopped
+              daq->stopDAQ();
         }
+      } catch(const TRESTDAQException& e) {
+        std::cerr<<"TRESTDAQException was thrown: "<<e.what()<<std::endl;
+      } catch (const std::exception& e) {
+        std::cerr<<"std::exception was thrown: "<<e.what()<<std::endl;
+      }
     }
 
     StopRun();
@@ -209,6 +217,12 @@ void TRESTDAQManager::InitializeSharedMemory(sharedMemoryStruct* sM) {
     sM->nEvents = -1;
     sM->exitManager = 0;
     sM->abortRun = 0;
+}
+
+int TRESTDAQManager::GetFileSize(const std::string &filename){
+  struct stat stat_buf;
+  int rc = stat(filename.c_str(), &stat_buf);
+  return rc == 0 ? stat_buf.st_size : -1;
 }
 
 void TRESTDAQManager::AbortThread() {
