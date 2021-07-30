@@ -38,6 +38,8 @@ TRestDAQGUI::TRestDAQGUI(const int& p, const int& q, std::string decodingFile) {
 
     instantRateGraph = new TGraph();
     instantRateGraph->GetXaxis()->SetTimeDisplay(1);
+    instantRateGraph->GetXaxis()->SetTimeFormat("%m-%d %H:%M");
+    instantRateGraph->GetXaxis()->SetTimeOffset(0);
     instantRateGraph->GetXaxis()->SetTitle("Date");
     instantRateGraph->GetYaxis()->SetTitle("Rate (Hz)");
     instantRateGraph->SetTitle("Rate");
@@ -478,7 +480,7 @@ void* TRestDAQGUI::UpdateThread(void* arg) {
 void TRestDAQGUI::UpdateParams() {
     while (!exitGUI) {
         tNow = TRESTDAQ::getCurrentTime();
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME));
         int oldStatus = status;
         if (!GetDAQManagerParams()) {
             status = -1;
@@ -510,11 +512,11 @@ void TRestDAQGUI::READ() {
 
     while (!exitGUI) {
 
-       std::this_thread::sleep_for(std::chrono::milliseconds(500));
+       std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME));
 
         if (status == 1) {
             int fSize = TRESTDAQManager::GetFileSize(runN);
-            if(fSize < 15*1024)continue;//Wait till filesize is big enough
+            if(fSize < MIN_FILE_SIZE)continue;//Wait till filesize is big enough
 
             TFile f(runN.c_str());
             if (f.IsZombie()) continue;
@@ -553,7 +555,7 @@ void TRestDAQGUI::READ() {
                     i++;
                 }
                 tree->Refresh();
-                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME));
             }
             f.Close();
         }
@@ -564,14 +566,14 @@ void TRestDAQGUI::READ() {
 
 void TRestDAQGUI::UpdateRate(const double& currentTimeEv, double& oldTimeEv, const int& currentEventCount, int& oldEventCount) {
     // std::cout<<currentTimeEv<<" "<< oldTimeEv<<" "<<currentTimeEv - oldTimeEv<<std::endl;
-    if (currentTimeEv - oldTimeEv < 5) return;
+    if (currentTimeEv - oldTimeEv < PLOTS_UPDATE_TIME) return;
 
     double meanRate = currentEventCount / (currentTimeEv - startTimeEvent);
     double instantRate = (currentEventCount - oldEventCount) / (currentTimeEv - oldTimeEv);
 
     // std::cout<<"Rate "<<meanRate<<" "<<instantRate<<" "<<currentEventCount<<" "<<oldEventCount<<std::endl;
 
-    double rootTime = 2871763200 + (currentTimeEv + oldTimeEv) / 2.;
+    double rootTime = (currentTimeEv + oldTimeEv) / 2.;
 
     instantRateGraph->SetPoint(rateGraphCounter, rootTime, instantRate);
     meanRateGraph->SetPoint(rateGraphCounter, rootTime, meanRate);
@@ -583,7 +585,7 @@ void TRestDAQGUI::UpdateRate(const double& currentTimeEv, double& oldTimeEv, con
 
 void TRestDAQGUI::AnalyzeEvent(TRestRawSignalEvent* fEvent, double& oldTimeUpdate) {
 
-    bool updatePlots = tNow > (oldTimeUpdate + 5);
+    bool updatePlots = tNow > (oldTimeUpdate + PLOTS_UPDATE_TIME);
 
     if (updatePlots) {
         for (auto p : pulsesGraph) delete p;
@@ -615,12 +617,12 @@ void TRestDAQGUI::AnalyzeEvent(TRestRawSignalEvent* fEvent, double& oldTimeUpdat
             baseLineSigma = TMath::Sqrt(baseLineSigma / nPoints - baseLine * baseLine);
         }
 
-        if (max > baseLine + 5 * baseLineSigma) {  // Only pulses above certain threshold
+        if (max > baseLine + N_SIGMA_THRESHOLD * baseLineSigma) {  // Only pulses above certain threshold
             max -= baseLine;
             evAmplitude += max;
             hmap[signal->GetID()] = max;
             if (updatePlots) {
-                TGraph* gr = new TGraph(pX.size(), &(pX[0]), &(pY[0]));
+                TGraph* gr = new TGraph(signal->GetNumberOfPoints(), &(pX[0]), &(pY[0]));
                 pulsesGraph.emplace_back(gr);
             }
         }

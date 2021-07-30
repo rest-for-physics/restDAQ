@@ -124,6 +124,11 @@ class TRestDAQGUI {
     void LoadDecodingFile(const std::string& decodingFile);
     void FillHitmap(const std::map<int, int>& hmap);
 
+    const int PLOTS_UPDATE_TIME = 5;//Seconds to update the plots
+    const int SLEEP_TIME = 500;//Miliseconds to sleep
+    const int N_SIGMA_THRESHOLD = 5;//Sigma threshold to apply to the pulses to take into accout in the writting
+    const int MIN_FILE_SIZE = 15*1024;//Minimum file size for a file to be opened
+
     ClassDef(TRestDAQGUI, 1)
 };
 
