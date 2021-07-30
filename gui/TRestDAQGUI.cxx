@@ -13,6 +13,7 @@ TRestDAQGUI::TRestDAQGUI(const int& p, const int& q, std::string decodingFile) {
     fMain->SetCleanup(kDeepCleanup);
 
     LoadLastSettings();
+    UpdateInputs();
     LoadDecodingFile(decodingFile);
 
     fVLeft = new TGVerticalFrame(fMain, 100, 200, kLHintsLeft);
@@ -359,6 +360,30 @@ void TRestDAQGUI::SaveLastSettings() {
         std::cout << "Cannot open " << fileN << std::endl;
 }
 
+void TRestDAQGUI::UpdateInputs() {
+
+  int shmid;
+  TRESTDAQManager::sharedMemoryStruct* mem;
+  if (!TRESTDAQManager::GetSharedMemory(shmid, &mem, 0)) {
+        std::cerr << "Cannot get shared memory, please make sure that restDAQManager is running" << std::endl;
+        return;
+    }
+    //Only update if is DAQ running
+    if(mem->status != 1){
+      TRESTDAQManager::DetachSharedMemory(&mem);
+      return;
+    }
+
+    auto rT = daq_metadata_types::acqTypes_map.find(mem->runType);
+    if (rT != daq_metadata_types::acqTypes_map.end()) type = (int)rT->second;
+
+    cfgFileName = mem->cfgFile;
+    nEvents = mem->nEvents;
+
+    TRESTDAQManager::DetachSharedMemory(&mem);
+
+}
+
 void TRestDAQGUI::UpdateOutputs() {
     std::string tmp = "Events: " + std::to_string(eventCount);
 
@@ -482,8 +507,15 @@ void* TRestDAQGUI::ReaderThread(void* arg) {
 }
 
 void TRestDAQGUI::READ() {
+
     while (!exitGUI) {
+
+       std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
         if (status == 1) {
+            int fSize = TRESTDAQManager::GetFileSize(runN);
+            if(fSize < 15*1024)continue;//Wait till filesize is big enough
+
             TFile f(runN.c_str());
             if (f.IsZombie()) continue;
             if (!f.ReadKeys()) continue;
@@ -525,7 +557,6 @@ void TRestDAQGUI::READ() {
             }
             f.Close();
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 
     std::cout << "Exiting reading thread " << std::endl;
@@ -551,7 +582,6 @@ void TRestDAQGUI::UpdateRate(const double& currentTimeEv, double& oldTimeEv, con
 }
 
 void TRestDAQGUI::AnalyzeEvent(TRestRawSignalEvent* fEvent, double& oldTimeUpdate) {
-    std::vector<double> pY(512);
 
     bool updatePlots = tNow > (oldTimeUpdate + 5);
 
@@ -559,6 +589,8 @@ void TRestDAQGUI::AnalyzeEvent(TRestRawSignalEvent* fEvent, double& oldTimeUpdat
         for (auto p : pulsesGraph) delete p;
         pulsesGraph.clear();
     }
+
+    std::vector<double> pY(512);
 
     int evAmplitude = 0;
     std::map<int, int> hmap;

@@ -93,6 +93,7 @@ class TRestDAQGUI {
     void cfgButtonDoubleClick(TGLVEntry* f, Int_t btn);
     void stopPressed();
     void UpdateParams();
+    void UpdateInputs();
     void UpdateOutputs();
     void UpdateCfg(const std::string& cN);
 
