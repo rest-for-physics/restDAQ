@@ -15,6 +15,7 @@ void signal_handler(int signum) {
 void help() {
     std::cout << " Rest DAQ Manager options:" << std::endl;
     std::cout << "    --e       : Exit manager" << std::endl;
+    std::cout << "    --s       : Stop run (if ongoing)" << std::endl;
     std::cout << "    --c       : Set configFile (single run)" << std::endl;
     std::cout << "    --h       : Print this help" << std::endl;
     std::cout << "If no arguments are provided it starts at infinite loop which is controller via shared memory" << std::endl;
@@ -75,8 +76,12 @@ int main(int argc, char** argv) {
             i++;
             cfgFile = argv[i++];
         } else if (arg == "--e") {
-            TRESTDAQManager::ExitManager();
             std::cout << "Exiting Rest DAQ Manager" << std::endl;
+            TRESTDAQManager::ExitManager();
+            return 0;
+        } else if (arg == "--s") {
+            std::cout << "Stopping run if any" << std::endl;
+            TRESTDAQManager::StopRun();
             return 0;
         } else if (arg == "--h") {
             help();
@@ -89,8 +94,7 @@ int main(int argc, char** argv) {
     }
 
     if (checkRunning()) {
-        std::cout << "Another " << thisProgram << " is running, please close it before starting another one, only one instance is allowed"
-                  << std::endl;
+        std::cout << "Another " << thisProgram << " is running, please close it before starting another one, only one instance is allowed" << std::endl;
         return 0;
     }
 
