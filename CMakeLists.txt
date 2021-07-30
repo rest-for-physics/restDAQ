@@ -29,8 +29,21 @@ set(lnklib ${ROOT_LIBRARIES} -lGui RestRaw)
 string(STRIP "${lnklib}" lnklib)
 
 add_subdirectory(daq)
-add_subdirectory(programs)
 add_subdirectory(gui)
+
+#-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+#Add execuatable and link to restDAQ libraries
+add_executable(restDAQManager restDAQManager.cxx)
+target_link_libraries(restDAQManager LINK_PUBLIC RESTDAQ ${lnklib})
+
+#----------------------------------------------------------------------------
+# Copy restDAQManager to the install directory
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        DESTINATION .
+        COMPONENT install
+        )
+
+install(TARGETS restDAQManager DESTINATION bin)
 
 #----------------------------------------------------------------------------
 # Copy macros to the install directory
