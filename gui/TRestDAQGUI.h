@@ -85,6 +85,8 @@ class TRestDAQGUI {
     void ReadInputs();
     void DisableInputs();
     void ReadCfgFileName();
+    void VerifyEventsEntry();
+
 
     void LoadLastSettings();
     void SaveLastSettings();

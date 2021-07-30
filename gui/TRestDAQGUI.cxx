@@ -163,6 +163,8 @@ void TRestDAQGUI::SetInputs() {
     nEventsEntry->SetToolTipText("Number of events to be acquired, use 0 for infinite loop");
     nEventsEntry->SetEnabled(kFALSE);
 
+    nEventsEntry->Connect("TextChanged(char *)", "TRestDAQGUI", this, "VerifyEventsEntry()");
+
     nEventsFrame->AddFrame(nEventsLabel, new TGLayoutHints(kLHintsLeft, 1, 1, 1, 1));
     nEventsFrame->AddFrame(nEventsEntry, new TGLayoutHints(kLHintsCenterX, 1, 1, 1, 1));
 
@@ -251,6 +253,12 @@ void TRestDAQGUI::SetButtons() {
     quitButton->SetToolTipText("Quit GUI (doesn't stop the run)");
     quitFrame->AddFrame(quitButton, new TGLayoutHints(kLHintsCenterX | kLHintsCenterY | kLHintsExpandX, 1, 1, 1, 1));
     fVLeft->AddFrame(quitFrame, new TGLayoutHints(kLHintsCenterX | kFixedWidth, 1, 1, 1, 1));
+}
+
+void TRestDAQGUI::VerifyEventsEntry(){
+
+  nEventsEntry->SetText( std::to_string(std::atoi(nEventsEntry->GetText() ) ).c_str() );
+
 }
 
 void TRestDAQGUI::StartPressed() {
