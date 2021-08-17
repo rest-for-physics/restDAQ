@@ -148,14 +148,13 @@ void TRESTDAQDCC::dataTaking() {
 
 void TRESTDAQDCC::stopDAQ() {
     dcc_socket.Close();
-    socket_cleanup();
     std::cout << "Run stopped" << std::endl;
 }
 
 void TRESTDAQDCC::saveEvent(unsigned char* buf, int size) {
     // If data supplied, copy to temporary buffer
     if (size <= 0) return;
-    DataPacket* dp = (DataPacket*)buf;
+    DCCPacket::DataPacket* dp = (DCCPacket::DataPacket*)buf;
     int scnt = ntohs(dp->scnt);
     if ((scnt <= 8) && (ntohs(dp->samp[0]) == 0) && (ntohs(dp->samp[1]) == 0)) return;  // empty data
 
@@ -232,8 +231,7 @@ DCCPacket::packetReply TRESTDAQDCC::SendCommand(const char* cmd, DCCPacket::pack
             length = recvfrom(dcc_socket.client, buf_rcv, 8192, 0, (struct sockaddr*)&dcc_socket.remote, &dcc_socket.remote_size);
 
             if (length < 0) {
-                int err = socket_get_error();
-                if (err == EWOULDBLOCK || err == EAGAIN) {
+                if (errno == EWOULDBLOCK || errno == EAGAIN) {
                     if (cnt % 1000 == 0) {
                         duration = std::chrono::duration_cast<std::chrono::duration<int>>(std::chrono::steady_clock::now() - startTime);
                         if (GetDAQMetadata()->GetVerboseLevel() >= REST_Extreme) fprintf(stderr, "socket() failed: %s\n", strerror(errno));
@@ -269,8 +267,8 @@ DCCPacket::packetReply TRESTDAQDCC::SendCommand(const char* cmd, DCCPacket::pack
         if (GetDAQMetadata()->GetVerboseLevel() >= REST_Debug) {
             printf("dcc().rep(): %d bytes of data \n", length);
             if (pckType == DCCPacket::packetType::BINARY) {
-                DataPacket* data_pk = (DataPacket*)buf_ual;
-                DataPacket_Print(data_pk);
+                DCCPacket::DataPacket* data_pk = (DCCPacket::DataPacket*)buf_ual;
+                DCCPacket::DataPacket_Print(data_pk);
             } else {
                 *(buf_ual + length) = '\0';
                 printf("dcc().rep(): %s", buf_ual);
@@ -284,7 +282,7 @@ DCCPacket::packetReply TRESTDAQDCC::SendCommand(const char* cmd, DCCPacket::pack
 
         if (pckType == DCCPacket::packetType::BINARY) {  // DAQ packet
 
-            DataPacket* data_pkt = (DataPacket*)buf_ual;
+            DCCPacket::DataPacket* data_pkt = (DCCPacket::DataPacket*)buf_ual;
 
             if(nPackets==0)saveEvent(buf_ual, length);
 
@@ -320,8 +318,8 @@ void DccSocket::Open(int* rem_ip_base, int rpt) {
 
     // Set socket in non-blocking mode
     int nb = 1;
-    if (ioctlsocket(client, FIONBIO, &nb) != 0) {
-        std::string error ="ioctlsocket failed: " + std::string(strerror(errno));
+    if (ioctl(client, FIONBIO, &nb) != 0) {
+        std::string error ="ioctl socket failed: " + std::string(strerror(errno));
         throw (TRESTDAQException(error));
     }
 
@@ -366,7 +364,7 @@ void DccSocket::Open(int* rem_ip_base, int rpt) {
 }
 
 void DccSocket::Close() {
-    closesocket(client);
+    close(client);
     client = 0;
 }
 

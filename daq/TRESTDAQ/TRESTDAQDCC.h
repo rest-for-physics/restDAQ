@@ -13,26 +13,11 @@ Based on mclient program from Denis Calvet
 #define __TREST_DAQ_DCC__
 
 #include "TRESTDAQ.h"
-
-extern "C" {
-#include "after.h"
-#include "endofevent_packet.h"
-#include "ethpacket.h"
-#include "fem.h"
-#include "gblink.h"
-#include "platform_spec.h"
-#include "sock_util.h"
-}
+#include "DCCPacket.h"
 
 #include <sys/socket.h>
 
 #include <iostream>
-
-namespace DCCPacket {
-enum class packetReply { ERROR = -1, RETRY = 0, OK = 1 };
-enum class packetType { ASCII = 0, BINARY = 1 };
-const uint32_t MAX_EVENT_SIZE = 6 * 4 * 79 * 2 * (512 + 32) * 12;
-};  // namespace DCCPacket
 
 class DccSocket {
    public:
