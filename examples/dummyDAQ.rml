@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+
+<TRestManager>
+
+<globals>
+
+    <parameter name="mainDataPath" value="/home/juanan/test/" />
+
+</globals>
+
+
+
+
+<TRestRun name="DummyDAQ" title="DUMMY DAQ" verboseLevel="info">
+	<parameter name="experiment" value="Test"/>
+	<parameter name="runNumber" value="auto"/>
+	<parameter name="runTag" value="DUMMY"/>
+	<!--parameter name="runType" value="auto"/-->
+	<parameter name="runDescription" value=""/>
+	<parameter name="user" value="${USER}"/>
+	<parameter name="verboseLevel" value="0"/>
+	<parameter name="overwrite" value="off" />
+	<parameter name="outputFileName" value="R[fRunNumber]_[fRunType]_[fRunTag].root"/>
+	<parameter name="readOnly" value="false" />
+
+</TRestRun>
+
+<TRestRawDAQMetadata name="DAQMetadata" title="DAQ Metadata" verboseLevel="info">
+	<parameter name ="baseIp" value="192:168:10:13"/>
+	<parameter name ="electronics" value="DUMMY"/>
+	<parameter name ="fecMask" value="0xC3"/>
+	<parameter name ="chipGain" value ="0x0"/>
+	<parameter name ="chipShappingTime" value="0x1"/>
+	<parameter name ="clockDiv" value="0x2" />
+	<parameter name ="triggerType" value="external"/>
+	<parameter name ="acquisitionType" value="background"/>
+	<parameter name ="compressMode" value="1"/>
+	<parameter name ="Nevents" value="0"/>
+</TRestRawDAQMetadata>
+
+    
+</TRestManager>
