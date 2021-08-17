@@ -208,8 +208,8 @@ void DCCPacket::FemAdcDataPrint(DataPacket* pck) {
     printf("Read-back : Mode:%d Compress:%d Arg1:0x%x Arg2:0x%x\n", GET_RB_MODE(ntohs(pck->args)), GET_RB_COMPRESS(ntohs(pck->args)),
                GET_RB_ARG1(ntohs(pck->args)), GET_RB_ARG2(ntohs(pck->args)));
 
-    Arg12ToFecAsicChannel(Fec_Per_Fem, (unsigned short)GET_RB_ARG1(ntohs(pck->args)), (unsigned short)GET_RB_ARG2(ntohs(pck->args)), &fec, &asic,
-                          &channel);
+    Arg12ToFecAsicChannel((unsigned short)GET_RB_ARG1(ntohs(pck->args)), (unsigned short)GET_RB_ARG2(ntohs(pck->args)), fec, asic,channel);
+
     printf("            Fec:%d Asic:%d Channel:%d\n", fec, asic, channel);
 
     ts = (((int)ntohs((pck->ts_h))) << 16) | (int)ntohs((pck->ts_l));
@@ -229,7 +229,7 @@ void DCCPacket::FemAdcDataPrint(DataPacket* pck) {
         samp = ntohs(pck->samp[i]);
         if (samp & ARGUMENT_FLAG) {
             printf("ArgRb (%3d)=0x%3x", i, GET_ARGUMENTS(samp));
-            Arg12ToFecAsicChannel(Fec_Per_Fem, (unsigned short)GET_RB_ARG1(samp), (unsigned short)GET_RB_ARG2(samp), &fec, &asic, &channel);
+            Arg12ToFecAsicChannel((unsigned short)GET_RB_ARG1(samp), (unsigned short)GET_RB_ARG2(samp), fec, asic, channel);
             printf(" (F:%d A:%d C:%d)\n", fec, asic, channel);
         } else if (samp & SAMPLE_COUNT_FLAG) {
             printf("SamCnt(%3d)=0x%3x (%4d)\n", i, GET_SAMPLE_COUNT(samp), GET_SAMPLE_COUNT(samp));
@@ -247,31 +247,37 @@ void DCCPacket::FemAdcDataPrint(DataPacket* pck) {
 /*******************************************************************************
  Arg12ToFecAsicChannel
 *******************************************************************************/
-int DCCPacket::Arg12ToFecAsicChannel(unsigned short fec_per_fem, unsigned short arg1, unsigned short arg2, unsigned short* fec, unsigned short* asic,
-                          unsigned short* channel) {
-    if (fec_per_fem == 6) {
-        *fec = (10 * (arg1 % 6) / 2 + arg2) / 4;
-        *asic = (10 * (arg1 % 6) / 2 + arg2) % 4;
-        *channel = arg1 / 6;
-        if ((*fec > 5) || (*asic > 3)) {
-            *fec = arg2 - 4;
-            *asic = 4;
-            *channel = (arg1 - 4) / 6;
-        }
-    } else if (fec_per_fem == 1) {
-        *fec = 0;
-        *asic = (arg1 % 6) + arg2;
-        *channel = arg1 / 6;
+int DCCPacket::Arg12ToFecAsicChannel(unsigned short arg1, unsigned short arg2, unsigned short &fec, unsigned short &asic, unsigned short  &channel) {
 
-    } else if (fec_per_fem == 4) {
-        *fec = (6 * (arg1 % 6) / 2 + arg2) / 4;
-        *asic = (6 * (arg1 % 6) / 2 + arg2) % 4;
-        *channel = arg1 / 6;
-    } else {
-        return (-1);
+    fec = (10 * (arg1 % 6) / 2 + arg2) / 4;
+    asic = (10 * (arg1 % 6) / 2 + arg2) % 4;
+    channel = arg1 / 6;
+    if ((fec > 5) || (asic > 3)) {
+        fec = arg2 - 4;
+        asic = 4;
+        channel = (arg1 - 4) / 6;
     }
 
-    return (0);
+    int physChannel = -10;
+    if (channel > 2 && channel < 15) {
+        physChannel = channel - 3;
+    } else if (channel > 15 && channel < 28) {
+        physChannel = channel - 4;
+    } else if (channel > 28 && channel < 53) {
+        physChannel = channel - 5;
+    } else if (channel > 53 && channel < 66) {
+        physChannel = channel - 6;
+    } else if (channel > 66) {
+        physChannel = channel - 7;
+    }
+
+    if (physChannel < 0) return physChannel;
+
+    channel = physChannel;
+
+    physChannel = fec * 72 * 4 + asic * 72 + physChannel;
+
+    return physChannel;
 }
 
 

@@ -161,31 +161,10 @@ void TRESTDAQDCC::saveEvent(unsigned char* buf, int size) {
     unsigned short fec, asic, channel;
     unsigned short arg1 = GET_RB_ARG1(ntohs(dp->args));
     unsigned short arg2 = GET_RB_ARG2(ntohs(dp->args));
-    fec = (10 * (arg1 % 6) / 2 + arg2) / 4;
-    asic = (10 * (arg1 % 6) / 2 + arg2) % 4;
-    channel = arg1 / 6;
-    if ((fec > 5) || (asic > 3)) {
-        fec = arg2 - 4;
-        asic = 4;
-        channel = (arg1 - 4) / 6;
-    }
 
-    int physChannel = -10;
-    if (channel > 2 && channel < 15) {
-        physChannel = channel - 3;
-    } else if (channel > 15 && channel < 28) {
-        physChannel = channel - 4;
-    } else if (channel > 28 && channel < 53) {
-        physChannel = channel - 5;
-    } else if (channel > 53 && channel < 66) {
-        physChannel = channel - 6;
-    } else if (channel > 66) {
-        physChannel = channel - 7;
-    }
+    int physChannel = DCCPacket::Arg12ToFecAsicChannel(arg1, arg2, fec, asic, channel);
 
     if (physChannel < 0) return;
-
-    physChannel = fec * 72 * 4 + asic * 72 + physChannel;
 
     std::vector<Short_t> sData(512, 0);
     if (GetDAQMetadata()->GetVerboseLevel() >= REST_Debug)

@@ -162,8 +162,6 @@ namespace DCCPacket {
     unsigned short samp[PHISTO_SIZE];  // data storage area
   } PedestalHistoBinPacket;
 
-  const unsigned short Fec_Per_Fem = 6;
-
   enum class packetReply { ERROR = -1, RETRY = 0, OK = 1 };
   enum class packetType { ASCII = 0, BINARY = 1 };
 
@@ -175,7 +173,7 @@ namespace DCCPacket {
   void Pedestal_PrintHistoBinPacket(PedestalHistoBinPacket* pck);
   void Pedestal_PrintHistoSummaryPacket(PedestalHistoSummaryPacket* pck);
   void FemAdcDataPrint(DataPacket* pck);
-  int Arg12ToFecAsicChannel(unsigned short fec_per_fem, unsigned short arg1, unsigned short arg2, unsigned short* fec, unsigned short* asic, unsigned short* channel);
+  int Arg12ToFecAsicChannel(unsigned short arg1, unsigned short arg2, unsigned short &fec, unsigned short &asic, unsigned short  &channel);
 }
 
 #endif
