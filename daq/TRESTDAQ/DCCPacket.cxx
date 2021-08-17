@@ -6,17 +6,15 @@
 void DCCPacket::DataPacket_Print( DataPacket *pck){
 
 
- // DCC data packet has a different structure
+    // DCC data packet has a different structure
     if (GET_FRAME_TY_V2(ntohs(pck->dcchdr)) & FRAME_TYPE_DCC_DATA) {
         DCC_Data_Print((EndOfEventPacket*)pck);
         return;
-    }
-    // FEM data - Pedestal Histogram Mathematics
+    } // FEM data - Pedestal Histogram Mathematics
     else if (GET_TYPE(ntohs(pck->hdr)) == RESP_TYPE_HISTOSTAT) {
         Pedestal_PrintHistoMathPacket((PedestalHistoMathPacket*)pck);
         return;
-    }
-    // FEM data - Pedestal Histogram Bins
+    } // FEM data - Pedestal Histogram Bins
     else if (GET_TYPE(ntohs(pck->hdr)) == RESP_TYPE_HISTOGRAM) {
         Pedestal_PrintHistoBinPacket((PedestalHistoBinPacket*)pck);
         return;
@@ -24,13 +22,11 @@ void DCCPacket::DataPacket_Print( DataPacket *pck){
     else if (GET_TYPE(ntohs(pck->hdr)) == RESP_TYPE_HISTOSUMMARY) {
         Pedestal_PrintHistoSummaryPacket((PedestalHistoSummaryPacket*)pck);
         return;
-    }
-    // FEM data - ADC samples in zero-suppressed or non zero-suppressed mode
+    } // FEM data - ADC samples in zero-suppressed or non zero-suppressed mode
     else if (GET_TYPE(ntohs(pck->hdr)) == RESP_TYPE_ADC_DATA) {
-        //FemAdcDataPrint(pck);
+        FemAdcDataPrint(pck);
         return;
     }
-
 
 }
 
