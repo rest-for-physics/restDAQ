@@ -155,7 +155,11 @@ void TRESTDAQDCC::saveEvent(unsigned char* buf, int size) {
     // If data supplied, copy to temporary buffer
     if (size <= 0) return;
     DCCPacket::DataPacket* dp = (DCCPacket::DataPacket*)buf;
-    int scnt = ntohs(dp->scnt);
+
+    //Check if packet has ADC data
+    if( GET_TYPE(ntohs(dp->hdr) ) != RESP_TYPE_ADC_DATA )return;
+
+    const unsigned int scnt = ntohs(dp->scnt);
     if ((scnt <= 8) && (ntohs(dp->samp[0]) == 0) && (ntohs(dp->samp[1]) == 0)) return;  // empty data
 
     unsigned short fec, asic, channel;
@@ -166,20 +170,28 @@ void TRESTDAQDCC::saveEvent(unsigned char* buf, int size) {
 
     if (physChannel < 0) return;
 
-    std::vector<Short_t> sData(512, 0);
     if (GetDAQMetadata()->GetVerboseLevel() >= REST_Debug)
         std::cout << "FEC " << fec << " asic " << asic << " channel " << channel << " physChann " << physChannel << "\n";
 
-    unsigned short timeBin = 0;
-    for (int i = 0; i < scnt; i++) {
-        unsigned short data = ntohs(dp->samp[i]);
-        if (((data & 0xFE00) >> 9) == 8) {
-            timeBin = GET_CELL_INDEX(data);
-        } else if ((((data & 0xF000) >> 12) == 0)) {
-            if (timeBin < 512) sData[timeBin] = data;  // TODO optimize using memcpy
-            timeBin++;
-        }
-    }
+   //bool compress = GET_RB_COMPRESS(ntohs(dp->args) );
+   std::vector<Short_t> sData(512, 0);
+   Short_t *sDataPtr = sData.data();
+
+   unsigned short timeBin = 0;
+
+      for (int i = 0; i < scnt && i<511; i++) {
+        Short_t data = ntohs(dp->samp[i]);
+          if (((data & 0xFE00) >> 9) == 8) {
+              timeBin = GET_CELL_INDEX(data);
+          } else if ((((data & 0xF000) >> 12) == 0)) {//Check fastest method
+              if (timeBin < 512) sDataPtr[timeBin] = std::move(data);
+              //if (timeBin < 512) sDataPtr[timeBin] = data;
+              //if (timeBin < 512)memcpy(&sData[timeBin],&data,sizeof(Short_t));
+              //if (timeBin < 512)std::copy(&sData[timeBin],&sData[timeBin], &data);
+              timeBin++;
+          }
+      }
+
     TRestRawSignal rawSignal(physChannel, sData);
     GetSignalEvent()->AddSignal(rawSignal);
 }
