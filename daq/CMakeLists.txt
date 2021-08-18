@@ -1,7 +1,7 @@
 
-add_library(RESTDAQ SHARED TRESTDAQ/TRESTDAQ.cxx TRESTDAQ/DCCPacket.cxx TRESTDAQ/TRESTDAQDCC.cxx TRESTDAQ/TRESTDAQDummy.cxx TRESTDAQ/TRESTDAQManager.cxx)
+add_library(RESTDAQ SHARED TRESTDAQ.cxx DCCPacket.cxx TRESTDAQDCC.cxx TRESTDAQDummy.cxx TRESTDAQManager.cxx)
 
-target_include_directories(RESTDAQ PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/TRESTDAQ ${rest_include_dirs})
+target_include_directories(RESTDAQ PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/ ${rest_include_dirs})
 
 target_link_libraries(RESTDAQ ${lnklib} -lCore RestRaw)
 
