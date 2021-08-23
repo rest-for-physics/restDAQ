@@ -18,20 +18,7 @@ To implement generic methods here
 #include "TRestRawDAQMetadata.h"
 #include "TRestRawSignalEvent.h"
 #include "TRestRun.h"
-
-class TRESTDAQException : public std::exception {
-  public:
-    TRESTDAQException(const string& msg) : m_msg(msg){
-    }
-
-   ~TRESTDAQException(){ }
-
-   virtual const char* what() const throw () {
-        return m_msg.c_str();
-   }
-  private:
-   const string m_msg;
-};
+#include "TRESTDAQException.h"
 
 class TRESTDAQ {
    public:
