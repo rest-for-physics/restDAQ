@@ -14,6 +14,7 @@ Control data acquisition via shared memory, should be always running
 
 #include "TRESTDAQDCC.h"
 #include "TRESTDAQDummy.h"
+#include "TRESTDAQFEMINOS.h"
 
 TRESTDAQManager::TRESTDAQManager() {
     int shmid;
@@ -105,6 +106,8 @@ void TRESTDAQManager::dataTaking() {
             daq = std::make_unique<TRESTDAQDummy>(&restRun, &daqMetadata);
         } else if (eT->second == daq_metadata_types::electronicsTypes::DCC) {
             daq = std::make_unique<TRESTDAQDCC>(&restRun, &daqMetadata);
+        } else if (eT->second == daq_metadata_types::electronicsTypes::FEMINOS) {
+            daq = std::make_unique<TRESTDAQFEMINOS>(&restRun, &daqMetadata);
         } else {
             std::cout << elType << " not implemented, skipping..." << std::endl;
             impl = false;
