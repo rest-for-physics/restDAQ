@@ -14,25 +14,7 @@ Based on mclient program from Denis Calvet
 
 #include "TRESTDAQ.h"
 #include "DCCPacket.h"
-
-#include <sys/socket.h>
-
-#include <iostream>
-
-class DccSocket {
-   public:
-    int client;
-    struct sockaddr_in target;
-    unsigned char* target_adr;
-
-    struct sockaddr_in remote;
-    unsigned int remote_size;
-    int rem_port;
-
-    void Close();
-    void Clear();
-    void Open(int* rem_ip_base, int rpt);
-};
+#include "TRESTDAQSocket.h"
 
 class TRESTDAQDCC : public TRESTDAQ {
    public:
@@ -59,10 +41,8 @@ class TRESTDAQDCC : public TRESTDAQ {
     int nFECs=0;
     int nASICs = 4;
 
-    const int REMOTE_DST_PORT = 1122;
-
     // Socket
-    DccSocket dcc_socket;
+    TRESTDAQSocket dcc_socket;
 };
 
 #endif
