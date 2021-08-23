@@ -27,12 +27,13 @@ Double_t TRESTDAQ::getCurrentTime() {
     return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count() / 1000000.0;
 }
 
-void TRESTDAQ::FillTree() {
-    restRun->GetAnalysisTree()->SetEventInfo(GetSignalEvent());
-    restRun->GetEventTree()->Fill();
-    restRun->GetAnalysisTree()->Fill();
+void TRESTDAQ::FillTree(TRestRun *rR, TRestRawSignalEvent* sEvent) {
+    rR->GetAnalysisTree()->SetEventInfo(sEvent);
+    rR->GetEventTree()->Fill();
+    rR->GetAnalysisTree()->Fill();
     // AutoSave is needed to read and write at the same time
     if (event_cnt % 100 == 0) {
-        restRun->GetEventTree()->AutoSave("SaveSelf");
+        rR->GetEventTree()->AutoSave("SaveSelf");
     }
+  event_cnt++;
 }

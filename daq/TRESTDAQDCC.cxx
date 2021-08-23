@@ -141,8 +141,7 @@ void TRESTDAQDCC::dataTaking() {
             }
         }
 
-        FillTree();
-        event_cnt++;
+        FillTree(GetRestRun(),GetSignalEvent());
     }
 }
 
@@ -228,8 +227,8 @@ DCCPacket::packetReply TRESTDAQDCC::SendCommand(const char* cmd, DCCPacket::pack
                         if (verboseLevel >= REST_Extreme) fprintf(stderr, "socket() failed: %s\n", strerror(errno));
                     }
                 } else {
-                    std::cerr << "recvfrom failed: " << strerror(errno) << std::endl;
-                    return DCCPacket::packetReply::ERROR;
+                  std::string error ="recvfrom failed: " + std::string(strerror(errno));
+                  throw (TRESTDAQException(error));
                 }
             }
             cnt++;

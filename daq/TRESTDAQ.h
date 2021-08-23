@@ -30,6 +30,7 @@ class TRESTDAQ {
     virtual void startDAQ() = 0;
     virtual void stopDAQ() = 0;
     virtual void initialize() = 0;
+    virtual void startUp(){};
 
     inline static bool abrt = false;
     inline static int event_cnt = 0;
@@ -40,7 +41,7 @@ class TRESTDAQ {
     TRestRun* GetRestRun() { return restRun; }
     TRestRawSignalEvent* GetSignalEvent() { return fSignalEvent; }
     TRestRawDAQMetadata* GetDAQMetadata() { return daqMetadata; }
-    void FillTree();
+    static void FillTree(TRestRun *rR, TRestRawSignalEvent* sEvent);
 
    private:
     TRestRun* restRun;

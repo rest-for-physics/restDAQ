@@ -43,8 +43,7 @@ void TRESTDAQDummy::startDAQ() {
             physChannel++;
         }
 
-        FillTree();
-        event_cnt++;
+        FillTree(GetRestRun(),GetSignalEvent());
     }
 }
 
