@@ -170,7 +170,7 @@ void TRESTDAQDCC::saveEvent(unsigned char* buf, int size) {
 
     if (physChannel < 0) return;
 
-    if (GetDAQMetadata()->GetVerboseLevel() >= REST_Debug)
+    if (verboseLevel >= REST_Debug)
         std::cout << "FEC " << fec << " asic " << asic << " channel " << channel << " physChann " << physChannel << "\n";
 
    //bool compress = GET_RB_COMPRESS(ntohs(dp->args) );
@@ -203,7 +203,7 @@ DCCPacket::packetReply TRESTDAQDCC::SendCommand(const char* cmd, DCCPacket::pack
         //return DCCPacket::packetReply::ERROR;
     }
 
-      if (GetDAQMetadata()->GetVerboseLevel() >= REST_Debug)std::cout<<"Command sent "<<cmd<<std::endl;
+      if (verboseLevel >= REST_Debug)std::cout<<"Command sent "<<cmd<<std::endl;
 
     // wait for incoming messages
     bool done = false;
@@ -225,7 +225,7 @@ DCCPacket::packetReply TRESTDAQDCC::SendCommand(const char* cmd, DCCPacket::pack
                 if (errno == EWOULDBLOCK || errno == EAGAIN) {
                     if (cnt % 1000 == 0) {
                         duration = std::chrono::duration_cast<std::chrono::duration<int>>(std::chrono::steady_clock::now() - startTime);
-                        if (GetDAQMetadata()->GetVerboseLevel() >= REST_Extreme) fprintf(stderr, "socket() failed: %s\n", strerror(errno));
+                        if (verboseLevel >= REST_Extreme) fprintf(stderr, "socket() failed: %s\n", strerror(errno));
                     }
                 } else {
                     std::cerr << "recvfrom failed: " << strerror(errno) << std::endl;
@@ -255,7 +255,7 @@ DCCPacket::packetReply TRESTDAQDCC::SendCommand(const char* cmd, DCCPacket::pack
         }
 
         // show packet if desired
-        if (GetDAQMetadata()->GetVerboseLevel() >= REST_Debug) {
+        if (verboseLevel >= REST_Debug) {
             printf("dcc().rep(): %d bytes of data \n", length);
             if (pckType == DCCPacket::packetType::BINARY) {
                 DCCPacket::DataPacket* data_pk = (DCCPacket::DataPacket*)buf_ual;
@@ -267,7 +267,7 @@ DCCPacket::packetReply TRESTDAQDCC::SendCommand(const char* cmd, DCCPacket::pack
         }
 
         if ((*buf_ual == '-')) {  // ERROR ASCII packet
-            if (GetDAQMetadata()->GetVerboseLevel() >= REST_Debug) printf("ERROR packet: %s\n", buf_ual);
+            if (verboseLevel >= REST_Debug) printf("ERROR packet: %s\n", buf_ual);
             return DCCPacket::packetReply::RETRY;
         }
 

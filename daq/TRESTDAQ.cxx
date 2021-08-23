@@ -14,10 +14,9 @@ Author: JuanAn Garcia 18/05/2021
 TRESTDAQ::TRESTDAQ(TRestRun* rR, TRestRawDAQMetadata* dM) {
     restRun = rR;
     daqMetadata = dM;
+    verboseLevel = daqMetadata->GetVerboseLevel();
     fSignalEvent = new TRestRawSignalEvent();
     restRun->AddEventBranch(fSignalEvent);
-    abrt = false;
-    event_cnt = 0;
 }
 
 TRESTDAQ::~TRESTDAQ() {

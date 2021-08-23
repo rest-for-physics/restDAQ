@@ -33,6 +33,7 @@ class TRESTDAQ {
 
     inline static bool abrt = false;
     inline static int event_cnt = 0;
+    inline static REST_Verbose_Level verboseLevel = REST_Info;
 
     static Double_t getCurrentTime();
 
