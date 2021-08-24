@@ -27,6 +27,7 @@
 
 <TRestRawDAQMetadata name="DAQMetadata" title="DAQ Metadata" verboseLevel="info">
 	<parameter name ="baseIp" value="192:168:10:13"/>
+	<parameter name ="localIp" value="192:168:10:10"/>
 	<parameter name ="electronics" value="DUMMY"/>
 	<parameter name ="fecMask" value="0xC3"/>
 	<parameter name ="chipGain" value ="0x0"/>
