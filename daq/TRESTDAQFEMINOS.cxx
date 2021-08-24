@@ -39,7 +39,7 @@ void TRESTDAQFEMINOS::startUp(){
   SendCommand("power_inv 0",FEMArray);
   SendCommand("fec_enable 0",FEMArray);
   //Ring Buffer and DAQ cleanup
-  SendCommand("daq 0x0 F",FEMArray);
+  SendCommand("daq 0x000000 F",FEMArray);
   SendCommand("daq 0xFFFFFF F",FEMArray);
   SendCommand("sca enable 0",FEMArray);
   std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -176,7 +176,7 @@ void TRESTDAQFEMINOS::pedestal() {
 
 void TRESTDAQFEMINOS::dataTaking() {
   std::cout << "Starting data taking run" << std::endl;
-  SendCommand("daq 0x0 F",FEMArray);
+  SendCommand("daq 0x000000 F",FEMArray);
   SendCommand("daq 0xFFFFFF F",FEMArray);
   SendCommand("sca enable 0",FEMArray);
   std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -213,13 +213,13 @@ void TRESTDAQFEMINOS::dataTaking() {
       }
     SendCommand("serve_target 1",FEMArray);//1: send to DAQ
     SendCommand("sca enable 1",FEMArray);//Enable data taking
-    SendCommand("daq 0xFFFFFF F",FEMArray);
+    SendCommand("daq 0x000000 F",FEMArray);//DAQ request
       //Wait till DAQ completion
       while (!abrt && (GetDAQMetadata()->GetNEvents() == 0 || event_cnt < GetDAQMetadata()->GetNEvents())) {
         //Do something here? E.g. send packet request
         std::this_thread::sleep_for(std::chrono::seconds(1));
       }
-    SendCommand("daq 0x0 F",FEMArray);
+    SendCommand("daq 0xFFFFFF F",FEMArray);//Stop DAQ request
 
 }
 
@@ -259,7 +259,7 @@ void TRESTDAQFEMINOS::SendCommand(const char* cmd, std::vector<FEMProxy> &FEMA){
 
 void TRESTDAQFEMINOS::SendCommand(const char* cmd, FEMProxy &FEM){
 
-  //Scope lock to avoid sent and recv
+  //Scope lock to avoid send and recv
   std::scoped_lock lock(mutex);
 
       if (sendto(FEM.client, cmd, strlen(cmd), 0, (struct sockaddr*)&(FEM.target), sizeof(struct sockaddr)) == -1) {
