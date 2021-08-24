@@ -10,6 +10,8 @@ Author: JuanAn Garcia 18/08/2021
 #include "TRESTDAQFEMINOS.h"
 #include "FEMINOSPacket.h"
 
+std::atomic<bool> TRESTDAQFEMINOS::stopReceiver(false);
+
 TRESTDAQFEMINOS::TRESTDAQFEMINOS(TRestRun* rR, TRestRawDAQMetadata* dM) : TRESTDAQ(rR, dM) { initialize(); }
 
 void TRESTDAQFEMINOS::initialize() {
@@ -243,8 +245,7 @@ void TRESTDAQFEMINOS::saveEvent(unsigned char* buf, int size) {
 
 void TRESTDAQFEMINOS::SendCommand(const char* cmd, std::vector<FEMProxy> &FEMA){
 
-  //Scope lock to avoid sent and recv
-  std::scoped_lock lock(mutex);
+  std::unique_lock<std::mutex> lock(mutex);
 
     for (auto &FEM : FEMA){
       if (sendto(FEM.client, cmd, strlen(cmd), 0, (struct sockaddr*)&(FEM.target), sizeof(struct sockaddr)) == -1) {
@@ -253,19 +254,22 @@ void TRESTDAQFEMINOS::SendCommand(const char* cmd, std::vector<FEMProxy> &FEMA){
       }
     }
 
+  lock.unlock();
+
     if (verboseLevel >= REST_Debug)std::cout<<"Command sent "<<cmd<<std::endl;
 
 }
 
 void TRESTDAQFEMINOS::SendCommand(const char* cmd, FEMProxy &FEM){
 
-  //Scope lock to avoid send and recv
-  std::scoped_lock lock(mutex);
+  std::unique_lock<std::mutex> lock(mutex);
 
       if (sendto(FEM.client, cmd, strlen(cmd), 0, (struct sockaddr*)&(FEM.target), sizeof(struct sockaddr)) == -1) {
         std::string error ="sendto failed: " + std::string(strerror(errno));
         throw (TRESTDAQException(error));
       }
+
+  lock.unlock();
 
     if (verboseLevel >= REST_Debug)std::cout<<"Command sent "<<cmd<<std::endl;
 

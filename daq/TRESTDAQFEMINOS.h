@@ -46,7 +46,7 @@ class TRESTDAQFEMINOS : public TRESTDAQ {
     static void ReceiveThread(std::vector<FEMProxy> *FEMA);
     static void ReceiveBuffer(FEMProxy &FEM);
     static void EventBuilderThread(std::vector<FEMProxy> *FEMA, TRestRun *rR, TRestRawSignalEvent* sEvent);
-    inline static std::atomic<bool> stopReceiver = false;
+    static std::atomic<bool> stopReceiver;
 
     inline static std::mutex mutex;
     inline static const uint16_t MAX_BUFFER_SIZE = 512;
