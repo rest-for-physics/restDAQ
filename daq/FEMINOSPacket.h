@@ -165,6 +165,7 @@ namespace FEMINOSPacket {
   void DataPacket_Print(uint16_t *fr, const uint16_t &size);
   void HistoStat_Print (uint16_t *fr, int &sz_rd, const uint16_t &hitCount);
   uint32_t GetUInt32FromBuffer(uint16_t *fr, int & sz_rd);
+  uint32_t GetUInt32FromBufferInv(uint16_t *fr, int & sz_rd);
   bool GetDataFrame(uint16_t *fr, const uint16_t &size, std::vector<Short_t> &sData, int &physChannel, uint32_t &ev_count, uint64_t &ts, bool &endOfEvent);
   bool isDataFrame(uint16_t *fr);
 

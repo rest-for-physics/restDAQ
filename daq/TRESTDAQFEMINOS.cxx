@@ -320,7 +320,7 @@ void TRESTDAQFEMINOS::ReceiveThread( std::vector<FEMProxy> *FEMA ) {
 
             if(length<=2)continue;//empty frame?
 
-            size_t size = length/2;//Note that length is in bytes
+            size_t size = length/sizeof(uint16_t);//Note that length is in bytes while size is uint16_t
             std::vector<uint16_t> frame(buf_rcv+1,buf_rcv + size-1);//skipping first word after the UDP header
             FEM.buffer.emplace_back(std::move(frame));
               if(FEM.buffer.size() >= (MAX_BUFFER_SIZE -1) ){
@@ -352,13 +352,13 @@ void TRESTDAQFEMINOS::EventBuilderThread(std::vector<FEMProxy> *FEMA, TRestRun *
         if(pendingEvent && !FEM.pendingEvent)continue;//Wait till we reach end of event for all the FEMINOS
 
         std::vector<uint16_t> frame = FEM.buffer.front();//Get first frame in the queue
-          if (verboseLevel >= REST_Debug)FEMINOSPacket::DataPacket_Print(frame.data(), frame.size()*2);
+          if (verboseLevel >= REST_Debug)FEMINOSPacket::DataPacket_Print(frame.data(), frame.size());
 
             if(FEMINOSPacket::isDataFrame(frame.data() ) ){
               int physChannel;
               bool endOfEvent;
               std::vector<Short_t> sData(512,0);
-                if(!FEMINOSPacket::GetDataFrame( frame.data(), frame.size()*2, sData, physChannel, ev_count, ts, endOfEvent) ){
+                if(!FEMINOSPacket::GetDataFrame( frame.data(), frame.size(), sData, physChannel, ev_count, ts, endOfEvent) ){
                   newEvent =true;
                   FEM.pendingEvent = !endOfEvent;
                   TRestRawSignal rawSignal(physChannel, sData);
