@@ -21,11 +21,9 @@ Based on mclient program from Denis Calvet
 
 class FEMProxy : public TRESTDAQSocket {
   public:
-
-    //FEMProxy () : buffer(std::unique_ptr<uint16_t[]>(new uint16_t[MAX_BUFFER_SIZE] ) ) {};
-    int FEMIndex;
     bool pendingEvent=false;
-    
+    FECMetadata fecMetadata;
+
     void AddBuffer(uint16_t *buf_rcv, const uint16_t &size);
     void GetNextBuffer(uint16_t *buf_rcv, const uint16_t &size);
 
@@ -54,7 +52,7 @@ class TRESTDAQFEMINOS : public TRESTDAQ {
   private:
     void pedestal();
     void dataTaking();
-    void SendCommand(const char* cmd, std::vector<FEMProxy> &FEMA);
+    void BroadcastCommand(const char* cmd, std::vector<FEMProxy> &FEMA);
     void SendCommand(const char* cmd, FEMProxy &FEM);
 
     void saveEvent(unsigned char* buf, int size);

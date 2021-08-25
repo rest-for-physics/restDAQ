@@ -33,13 +33,13 @@ class TRESTDAQDCC : public TRESTDAQ {
     void waitForTrigger();
     void saveEvent(unsigned char* buf, int size);
 
-    // TODO GetChannels from decoding file?
+    uint16_t FECMask=0;
+
     int startFEC;
     int endFEC;
     int chStart=3;
     int chEnd=78;
     int nFECs=0;
-    int nASICs = 4;
 
     // Socket
     TRESTDAQSocket dcc_socket;

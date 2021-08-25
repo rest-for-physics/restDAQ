@@ -12,16 +12,15 @@ Author: JuanAn Garcia 18/05/2021
 TRESTDAQDCC::TRESTDAQDCC(TRestRun* rR, TRestRawDAQMetadata* dM) : TRESTDAQ(rR, dM) { initialize(); }
 
 void TRESTDAQDCC::initialize() {
-    dcc_socket.Open(GetDAQMetadata()->GetBaseIp(),GetDAQMetadata()->GetLocalIp(), REMOTE_DST_PORT);
+  dcc_socket.Open(GetDAQMetadata()->GetBaseIp(),GetDAQMetadata()->GetLocalIp(), REMOTE_DST_PORT);
 
-    bool firstFEC = true;
-    for (int fecN = 5; fecN >= 0; fecN--) {
-        if (GetDAQMetadata()->GetFECMask() & (1 << fecN)) continue;
-        if (firstFEC) endFEC = fecN;
-        firstFEC = false;
-        startFEC = fecN;
-        nFECs++;
+    for(auto fec : GetDAQMetadata()->GetFECs()){
+      FECMask |= (1 << fec.id);
+        if(nFECs==0)startFEC = fec.id;
+        endFEC = fec.id;
+      nFECs++;
     }
+
 }
 
 void TRESTDAQDCC::configure() {
@@ -38,31 +37,32 @@ void TRESTDAQDCC::configure() {
     SendCommand(cmd);
     SendCommand("pokes 0x16 0x0");    // Set trigger delay
     SendCommand("pokes 0x1A 0x1ff");  // SCA delay and trigger
-    if (GetDAQMetadata()->GetAcquisitionType() == "pedestal")
+      if (GetDAQMetadata()->GetAcquisitionType() == "pedestal"){
         SendCommand("pokes 0x14 0x400");  // Set SCA readback offset
-    else
+      } else {
         SendCommand("pokes 0x14 0xc00");  // Set SCA readback offset
-    int pk = 0xffc0 | GetDAQMetadata()->GetFECMask();
+      }
+    int pk = 0xffc0 | FECMask;
     sprintf(cmd, "pokeb 0x4 0x%X", pk);  // Set FEC mask, note that is inverted
     SendCommand(cmd);
     // SendCommand("pokeb 0x5 0x0",-1);//Deplecated?
 
     // Configure AFTER chip
-    for (int fecN = 5; fecN >= 0; fecN--) {
-        if (GetDAQMetadata()->GetFECMask() & (1 << fecN)) continue;
-        sprintf(cmd, "fec %d", fecN);
+    for(auto fec : GetDAQMetadata()->GetFECs()) {
+        sprintf(cmd, "fec %d", fec.id);
         SendCommand(cmd);
-        for (int asic = 0; asic < 4; asic++) {
-            unsigned int reg = ((GetDAQMetadata()->GetShappingTime() & 0xF) << 3) | ((GetDAQMetadata()->GetGain() & 0x3) << 1);
-            sprintf(cmd, "asic %d write 1 0x%X", asic, reg);  // Gain and shapping time
+          for (int a = 0; a < 4; a++) {
+            if(!fec.asic[a].isActive)continue;
+            unsigned int reg = ( (fec.asic[a].shappingTime & 0xF) << 3) | ( (fec.asic[a].gain & 0x3) << 1) ;
+            sprintf(cmd, "asic %d write 1 0x%X", a, reg);  // Gain and shapping time
             SendCommand(cmd);
-            sprintf(cmd, "asic %d write 2 0xA000", asic);  // Output buffers
+            sprintf(cmd, "asic %d write 2 0xA000", a);  // Output buffers
             SendCommand(cmd);
-            sprintf(cmd, "asic %d write 3 0x3f 0xffff 0xffff", asic);
+            sprintf(cmd, "asic %d write 3 0x3f 0xffff 0xffff", a);
             SendCommand(cmd);
-            sprintf(cmd, "asic %d write 4 0x3f 0xffff 0xffff", asic);
+            sprintf(cmd, "asic %d write 4 0x3f 0xffff 0xffff", a);
             SendCommand(cmd);
-        }
+          }
     }
     // SendCommand("isobus 0x0F", -1);//Reset event counter, timestamp set eventType to test
 }
@@ -91,7 +91,7 @@ void TRESTDAQDCC::pedestal() {
     SendCommand("pokes 0x14 0x0");  // Set SCA readback offset
     SendCommand("hbusy clr");
     SendCommand("fem 0");
-    sprintf(cmd, "hped clr %d:%d * %d:%d", startFEC, endFEC, chStart, chEnd);
+    sprintf(cmd, "hped clr %d:%d * *", startFEC, endFEC);
     SendCommand(cmd);            ////Clear pedestals
     SendCommand("isobus 0x4F");  // Reset event counter, timestamp for type 10
 
@@ -101,17 +101,27 @@ void TRESTDAQDCC::pedestal() {
         SendCommand("isobus 0x1C");     // SCA stop
         waitForTrigger();
         SendCommand("fem 0");
-        sprintf(cmd, "hped acc %d:%d * %d:%d", startFEC, endFEC, chStart, chEnd);
-        SendCommand(cmd);  // Get pedestals
+          for(auto fec : GetDAQMetadata()->GetFECs()) {
+            for (int a = 0; a < 4; a++) {
+              if(!fec.asic[a].isActive)continue;
+              sprintf(cmd, "hped acc %d %d %d:%d", fec.id, a, fec.asic[a].channelStart, fec.asic[a].channelEnd);
+              SendCommand(cmd);  // Get pedestals
+            }
+          }   
     }
 
     SendCommand("fem 0");
-    sprintf(cmd, "hped getsummary %d:%d * %d:%d", startFEC, endFEC, chStart, chEnd);
-    SendCommand(cmd, DCCPacket::packetType::BINARY, nFECs * nASICs);  // Get summary
-    sprintf(cmd, "hped centermean %d:%d * %d:%d 250", startFEC, endFEC, chStart, chEnd);
-    SendCommand(cmd);  // Set mean
-    sprintf(cmd, "hped setthr %d:%d * %d:%d 250 4.5", startFEC, endFEC, chStart, chEnd);
-    SendCommand(cmd);  // Set threshold
+      for(auto fec : GetDAQMetadata()->GetFECs()) {
+            for (int a = 0; a < 4; a++) {
+              if(!fec.asic[a].isActive)continue;
+              sprintf(cmd, "hped getsummary %d %d %d:%d", fec.id, a, fec.asic[a].channelStart, fec.asic[a].channelEnd);
+              SendCommand(cmd, DCCPacket::packetType::BINARY, 1);  // Get summary
+              sprintf(cmd, "hped centermean %d %d %d:%d %d", fec.id, a, fec.asic[a].channelStart, fec.asic[a].channelEnd, fec.asic[a].pedCenter);
+              SendCommand(cmd);  // Set mean
+              sprintf(cmd, "hped setthr %d %d %d:%d %d %.1f", fec.id, a, fec.asic[a].channelStart, fec.asic[a].channelEnd, fec.asic[a].pedCenter, fec.asic[a].pedThr);
+              SendCommand(cmd);  // Set threshold
+            }
+          }
 }
 
 void TRESTDAQDCC::dataTaking() {
@@ -126,20 +136,20 @@ void TRESTDAQDCC::dataTaking() {
     while (!abrt && (GetDAQMetadata()->GetNEvents() == 0 || event_cnt < GetDAQMetadata()->GetNEvents())) {
         SendCommand("fem 0");
 
-        SendCommand("isobus 0x6C");                                                        // SCA start
+        SendCommand("isobus 0x6C");// SCA start
         if (GetDAQMetadata()->GetTriggerType() == "internal") SendCommand("isobus 0x1C");  // SCA stop case of internal trigger
         GetSignalEvent()->Initialize();
         GetSignalEvent()->SetID(event_cnt);
         waitForTrigger();
         // Perform data acquisition phase, compress, accept size
         GetSignalEvent()->SetTime(getCurrentTime());
-        for (int fecN = 5; fecN >= 0; fecN--) {
-            if (GetDAQMetadata()->GetFECMask() & (1 << fecN)) continue;
-            for (int asic = 0; asic < 4; asic++) {
-                sprintf(cmd, "areq %d %d %d %d %d", GetDAQMetadata()->GetCompressMode(), fecN, asic, chStart, chEnd);
-                SendCommand(cmd, DCCPacket::packetType::BINARY);
+          for(auto fec : GetDAQMetadata()->GetFECs()) {
+            for (int a = 0; a < 4; a++) {
+              if(!fec.asic[a].isActive)continue;
+              sprintf(cmd, "areq %d %d %d %d %d", GetDAQMetadata()->GetCompressMode(), fec.id, a, fec.asic[a].channelStart, fec.asic[a].channelEnd);
+              SendCommand(cmd, DCCPacket::packetType::BINARY);
             }
-        }
+          }
 
         FillTree(GetRestRun(),GetSignalEvent());
     }
