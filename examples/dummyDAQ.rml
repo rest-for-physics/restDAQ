@@ -29,14 +29,48 @@
 	<parameter name ="baseIp" value="192:168:10:13"/>
 	<parameter name ="localIp" value="192:168:10:10"/>
 	<parameter name ="electronics" value="DUMMY"/>
-	<parameter name ="fecMask" value="0xC3"/>
-	<parameter name ="chipGain" value ="0x0"/>
-	<parameter name ="chipShappingTime" value="0x1"/>
 	<parameter name ="clockDiv" value="0x2" />
 	<parameter name ="triggerType" value="external"/>
 	<parameter name ="acquisitionType" value="background"/>
 	<parameter name ="compressMode" value="1"/>
-	<parameter name ="Nevents" value="0"/>
+	<parameter name ="Nevents" value="10"/>
+
+  <FEC id="2" ip="192:168:10:13" chip="after" clockDiv="0x2">
+    <ASIC id="*" isActive="true" gain="0x1" shappingTime="0x2" polarity="0" pedcenter="250" pedthr="5.0">
+        <channel id="*" isActive="true"></channel>
+        <channel id="0" isActive="false"></channel>
+        <channel id="1" isActive="false"></channel>
+        <channel id="2" isActive="false"></channel>
+    </ASIC>
+  </FEC>
+
+  <FEC id="3" ip="192:168:10:13" chip="after" clockDiv="0x2">
+    <ASIC id="*" isActive="true" gain="0x1" shappingTime="0x2" polarity="0" pedcenter="250" pedthr="5.0">
+        <channel id="*" isActive="true"></channel>
+        <channel id="0" isActive="false"></channel>
+        <channel id="1" isActive="false"></channel>
+        <channel id="2" isActive="false"></channel>
+    </ASIC>
+  </FEC>
+
+  <FEC id="4" ip="192:168:10:13" chip="after" clockDiv="0x2">
+    <ASIC id="*" isActive="true" gain="0x1" shappingTime="0x2" polarity="0" pedcenter="250" pedthr="5.0">
+        <channel id="*" isActive="true"></channel>
+        <channel id="0" isActive="false"></channel>
+        <channel id="1" isActive="false"></channel>
+        <channel id="2" isActive="false"></channel>
+    </ASIC>
+  </FEC>
+
+  <FEC id="5" ip="192:168:10:13" chip="after" clockDiv="0x2">
+    <ASIC id="*" isActive="true" gain="0x1" shappingTime="0x2" polarity="0" pedcenter="250" pedthr="5.0">
+        <channel id="*" isActive="true"></channel>
+        <channel id="0" isActive="false"></channel>
+        <channel id="1" isActive="false"></channel>
+        <channel id="2" isActive="false"></channel>
+    </ASIC>
+  </FEC>
+
 </TRestRawDAQMetadata>
 
     
