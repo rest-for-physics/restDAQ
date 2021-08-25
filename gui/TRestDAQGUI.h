@@ -112,7 +112,7 @@ class TRestDAQGUI {
     static void* UpdateThread(void* arg);
     static void* ReaderThread(void* arg);
     const std::string lastSetFile = "DAQLastSettings.txt";
-    inline static std::atomic<bool> exitGUI{false};
+    static std::atomic<bool> exitGUI;
 
     const std::vector<double> initPX() {
         std::vector<double> v(512);

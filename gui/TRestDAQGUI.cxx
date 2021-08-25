@@ -7,6 +7,8 @@
 
 ClassImp(TRestDAQGUI);
 
+std::atomic<bool> TRestDAQGUI::exitGUI(false);
+
 TRestDAQGUI::TRestDAQGUI(const int& p, const int& q, std::string decodingFile) {
     fMain = new TGMainFrame(gClient->GetRoot(), p, q, kHorizontalFrame);
 
