@@ -36,6 +36,66 @@ TRESTDAQManager::~TRESTDAQManager() {
     }
 }
 
+void TRESTDAQManager::startUp() {
+
+  std::cout<<__PRETTY_FUNCTION__<<std::endl;
+
+  int shmid;
+  sharedMemoryStruct* sM;
+    if (!GetSharedMemory(shmid, &sM)) return;
+
+    if (!TRestTools::fileExists(sM->cfgFile)) {
+        std::cout << "File " << sM->cfgFile << " not found, please provide existing config file" << std::endl;
+        DetachSharedMemory(&sM);
+        return;
+    }
+
+  TRestRawDAQMetadata daqMetadata(sM->cfgFile);
+
+  sM->status = 1;
+  DetachSharedMemory(&sM);
+
+    try{
+      auto daq = GetTRESTDAQ(nullptr,&daqMetadata);
+      if(daq){ 
+        daq->startUp();
+        daq->stopDAQ();
+      }
+    } catch(const TRESTDAQException& e) {
+      std::cerr<<"TRESTDAQException was thrown: "<<e.what()<<std::endl;
+    } catch (const std::exception& e) {
+        std::cerr<<"std::exception was thrown: "<<e.what()<<std::endl;
+    }
+
+}
+
+std::unique_ptr<TRESTDAQ> TRESTDAQManager::GetTRESTDAQ (TRestRun* rR, TRestRawDAQMetadata* dM){
+
+  std::unique_ptr<TRESTDAQ> daq(nullptr);
+
+  std::string electronicsType (dM->GetElectronicsType());
+  auto eT = daq_metadata_types::electronicsTypes_map.find(electronicsType);
+    if (eT == daq_metadata_types::electronicsTypes_map.end()) {
+        std::cout << "Electronics type " << electronicsType << " not found, skipping " << std::endl;
+        std::cout << "Valid electronics types:" << std::endl;
+        for (const auto& [name, t] : daq_metadata_types::electronicsTypes_map) std::cout << (int)t << " " << name << std::endl;
+      return daq;
+    }
+
+    if (eT->second == daq_metadata_types::electronicsTypes::DUMMY) {
+        daq = std::make_unique<TRESTDAQDummy>(rR, dM);
+    } else if (eT->second == daq_metadata_types::electronicsTypes::DCC) {
+        daq = std::make_unique<TRESTDAQDCC>(rR, dM);
+    } else if (eT->second == daq_metadata_types::electronicsTypes::FEMINOS) {
+        daq = std::make_unique<TRESTDAQFEMINOS>(rR, dM);
+    } else {
+        std::cout << electronicsType << " not implemented, skipping..." << std::endl;
+    }
+
+return daq;
+
+}
+
 void TRESTDAQManager::dataTaking() {
     int shmid;
     sharedMemoryStruct* sM;
@@ -92,40 +152,19 @@ void TRESTDAQManager::dataTaking() {
 
     std::thread abrtT(AbortThread);
 
-    std::string elType = daqMetadata.GetElectronicsType().Data();
-    auto eT = daq_metadata_types::electronicsTypes_map.find(elType);
-    if (eT == daq_metadata_types::electronicsTypes_map.end()) {
-        std::cout << "Electronics type " << elType << " not found, skipping " << std::endl;
-        std::cout << "Valid electronics types:" << std::endl;
-        for (const auto& [name, t] : daq_metadata_types::electronicsTypes_map) std::cout << (int)t << " " << name << std::endl;
-    } else {
-      try{
-        std::unique_ptr<TRESTDAQ> daq;
-        bool impl = true;
-        if (eT->second == daq_metadata_types::electronicsTypes::DUMMY) {
-            daq = std::make_unique<TRESTDAQDummy>(&restRun, &daqMetadata);
-        } else if (eT->second == daq_metadata_types::electronicsTypes::DCC) {
-            daq = std::make_unique<TRESTDAQDCC>(&restRun, &daqMetadata);
-        } else if (eT->second == daq_metadata_types::electronicsTypes::FEMINOS) {
-            daq = std::make_unique<TRESTDAQFEMINOS>(&restRun, &daqMetadata);
-        } else {
-            std::cout << elType << " not implemented, skipping..." << std::endl;
-            impl = false;
+    try{
+      auto daq = GetTRESTDAQ(&restRun,&daqMetadata);
+        if(daq){ 
+          TRESTDAQ::abrt = false;
+          daq->configure();
+          std::cout << "Electronics configured, starting data taking run type " << std::endl;
+          daq->startDAQ();  // Should wait till completion or stopped
+          daq->stopDAQ();
         }
-
-        if (impl) {
-            TRESTDAQ::abrt = false;
-            daq->configure();
-            std::cout << "Electronics configured, starting data taking run type " << std::endl;
-
-              daq->startDAQ();  // Should wait till completion or stopped
-              daq->stopDAQ();
-        }
-      } catch(const TRESTDAQException& e) {
-        std::cerr<<"TRESTDAQException was thrown: "<<e.what()<<std::endl;
-      } catch (const std::exception& e) {
+    } catch(const TRESTDAQException& e) {
+      std::cerr<<"TRESTDAQException was thrown: "<<e.what()<<std::endl;
+    } catch (const std::exception& e) {
         std::cerr<<"std::exception was thrown: "<<e.what()<<std::endl;
-      }
     }
 
     StopRun();
@@ -164,6 +203,15 @@ void TRESTDAQManager::run() {
     do {
         if (!GetSharedMemory(shmid, &sharedMemory)) break;
         exitMan = sharedMemory->exitManager;
+
+        if(sharedMemory->startUp == 1){
+          DetachSharedMemory(&sharedMemory);
+          startUp();
+          if (!GetSharedMemory(shmid, &sharedMemory)) break;
+          sharedMemory->startUp = 0;
+          sharedMemory->status = 0;
+        }
+
         if (sharedMemory->startDAQ == 1) {
             std::cout << "DAQ started" << std::endl;
             // Make sure that abort flag is set to false
