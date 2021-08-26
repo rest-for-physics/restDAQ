@@ -68,13 +68,20 @@ bool checkRunning() {
 }
 
 int main(int argc, char** argv) {
+
     std::string cfgFile = "";
+    bool startUp = false;
 
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
+        std::cout<<i<<" "<<arg<<std::endl;
         if (arg == "--c") {
             i++;
-            cfgFile = argv[i++];
+            cfgFile = argv[i];
+            std::cout<<"Cfg file "<<cfgFile<<std::endl;
+        } else if (arg == "--u") {
+            std::cout << "Starting up electronics" << std::endl;
+            startUp = true;
         } else if (arg == "--e") {
             std::cout << "Exiting Rest DAQ Manager" << std::endl;
             TRESTDAQManager::ExitManager();
@@ -122,13 +129,24 @@ int main(int argc, char** argv) {
     if (!cfgFile.empty()) {
         int shmid;
         TRESTDAQManager::sharedMemoryStruct* mem;
-        if (!TRESTDAQManager::GetSharedMemory(shmid, &mem, 0)) {
+        if (!TRESTDAQManager::GetSharedMemory(shmid, &mem)) {
             std::cerr << "Cannot get shared memory!!" << std::endl;
             return -1;
         }
-        sprintf(mem->cfgFile, cfgFile.c_str());
+        char *fullPath = realpath(cfgFile.c_str(), NULL);
+          if(fullPath){
+            std::cout<<"Full path: "<<fullPath<<std::endl;
+            sprintf(mem->cfgFile, fullPath);
+          } else {
+            sprintf(mem->cfgFile, cfgFile.c_str());
+          }
         TRESTDAQManager::DetachSharedMemory(&mem);
-        daqManager.dataTaking();
+          if(startUp){
+            std::cout<<"Trying startup"<<std::endl;
+            daqManager.startUp();
+          } else {
+            daqManager.dataTaking();
+          }
     } else {
         daqManager.run();
     }
