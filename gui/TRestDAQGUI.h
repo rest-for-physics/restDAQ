@@ -42,7 +42,7 @@ class TRestDAQGUI {
    public:
     TGMainFrame* fMain;
     TGVerticalFrame* fVLeft;
-    TGTextButton *startButton, *stopButton, *quitButton, *cfgButton;
+    TGTextButton *startButton, *stopButton, *quitButton, *cfgButton, *startUpButton;
     TGLabel *statusLabel, *runLabel, *rateLabel, *counterLabel, *cfgLabel, *typeLabel, *nEventsLabel;
     TGTextEntry* runName;
     TGTextEntry* nEventsEntry;
@@ -53,6 +53,7 @@ class TRestDAQGUI {
 
     TGFileContainer* fContents;
     TGTransientFrame* cfgMain;
+    TGTransientFrame* startUpMain;
 
     std::string cfgFileName = "none", runN = "none";
     int status = -1;
@@ -87,13 +88,21 @@ class TRestDAQGUI {
     void ReadCfgFileName();
     void VerifyEventsEntry();
 
+    void CloseCfgWindow(){
+      if(cfgMain)delete cfgMain;
+    }
+
+    void CloseStartUpWindow(){
+      if(startUpMain)delete startUpMain;
+    }
 
     void LoadLastSettings();
     void SaveLastSettings();
 
     void cfgButtonPressed();
     void cfgButtonDoubleClick(TGLVEntry* f, Int_t btn);
-    void stopPressed();
+    void StopPressed();
+    void StartUpPressed();
     void UpdateParams();
     void UpdateInputs();
     void UpdateOutputs();
@@ -107,7 +116,7 @@ class TRestDAQGUI {
     void AnalyzeEvent(TRestRawSignalEvent* fEvent, double& oldTimeUpdate);
     void UpdateRate(const double& currentTimeEv, double& oldTimeEv, const int& currentEventCount, int& oldEventCount);
 
-    bool GetDAQManagerParams();
+    bool GetDAQManagerParams(double &lastTimeUpdate);
 
     static void* UpdateThread(void* arg);
     static void* ReaderThread(void* arg);

@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include "TRESTDAQManager.h"
+#include "TGMsgBox.h"
 
 ClassImp(TRestDAQGUI);
 
@@ -242,11 +243,20 @@ void TRestDAQGUI::SetButtons() {
     // 4.2 stop button
     TGHorizontalFrame* stopFrame = new TGHorizontalFrame(fVLeft, 100, 30, kLHintsCenterX | kFixedWidth);
     stopButton = new TGTextButton(stopFrame, "S&TOP");
-    stopButton->Connect("Clicked()", "TRestDAQGUI", this, "stopPressed()");
+    stopButton->Connect("Clicked()", "TRestDAQGUI", this, "StopPressed()");
     stopButton->SetToolTipText("Stop data taking");
     stopButton->SetEnabled(kFALSE);
     stopFrame->AddFrame(stopButton, new TGLayoutHints(kLHintsCenterX | kLHintsCenterY | kLHintsExpandX, 1, 1, 1, 1));
     fVLeft->AddFrame(stopFrame, new TGLayoutHints(kLHintsCenterX | kFixedWidth, 1, 1, 1, 1));
+
+    // 4.4 startUp button
+    TGHorizontalFrame* startUpFrame = new TGHorizontalFrame(fVLeft, 100, 30, kLHintsCenterX | kFixedWidth);
+    startUpButton = new TGTextButton(startUpFrame, "START &UP");
+    startUpButton->Connect("Clicked()", "TRestDAQGUI", this, "StartUpPressed()");
+    startUpButton->SetToolTipText("Start up electronics (e.g. after power up)");
+    startUpButton->SetEnabled(kFALSE);
+    startUpFrame->AddFrame(startUpButton, new TGLayoutHints(kLHintsCenterX | kLHintsCenterY | kLHintsExpandX, 1, 1, 1, 1));
+    fVLeft->AddFrame(startUpFrame, new TGLayoutHints(kLHintsCenterX | kFixedWidth, 1, 1, 1, 1));
 
     // 4.3 Quit button
     TGHorizontalFrame* quitFrame = new TGHorizontalFrame(fVLeft, 100, 30, kLHintsCenterX | kFixedWidth);
@@ -266,7 +276,7 @@ void TRestDAQGUI::VerifyEventsEntry(){
 void TRestDAQGUI::StartPressed() {
     int shmid;
     TRESTDAQManager::sharedMemoryStruct* mem;
-    if (!TRESTDAQManager::GetSharedMemory(shmid, &mem, 0)) {
+    if (!TRESTDAQManager::GetSharedMemory(shmid, &mem)) {
         std::cerr << "Cannot get shared memory, please make sure that restDAQManager is running" << std::endl;
         return;
     }
@@ -287,10 +297,10 @@ void TRestDAQGUI::StartPressed() {
     TRESTDAQManager::DetachSharedMemory(&mem);
 }
 
-void TRestDAQGUI::stopPressed() {
+void TRestDAQGUI::StopPressed() {
     int shmid;
     TRESTDAQManager::sharedMemoryStruct* mem;
-    if (!TRESTDAQManager::GetSharedMemory(shmid, &mem, 0)) {
+    if (!TRESTDAQManager::GetSharedMemory(shmid, &mem)) {
         std::cerr << "Cannot get shared memory, please make sure that restDAQManager is running" << std::endl;
         return;
     }
@@ -299,9 +309,47 @@ void TRestDAQGUI::stopPressed() {
     TRESTDAQManager::DetachSharedMemory(&mem);
 }
 
+void TRestDAQGUI::StartUpPressed() {
+
+    startUpMain = new TGTransientFrame(gClient->GetRoot(), fMain, 400, 200);
+    startUpMain->DontCallClose(); // to avoid double deletions.
+    startUpMain->SetCleanup(kDeepCleanup);
+    startUpMain->Resize();
+     // position relative to the parent's window
+    startUpMain->CenterOnParent();
+
+    int retval=0;
+    startUpMain->Disconnect("CloseWindow()");
+    startUpMain->Connect("CloseWindow()", "TRestDAQGUI", this, "CloseStartUpWindow()");
+    new TGMsgBox(gClient->GetRoot(), startUpMain,
+                "START UP", "Start up is only needed after power-cycle, do you want to continue?",
+                kMBIconExclamation, kMBYes| kMBNo, &retval);
+
+    startUpMain->MapWindow();
+    //gClient->WaitFor(startUpMain);
+
+    if(retval == kMBYes){
+      int shmid;
+      TRESTDAQManager::sharedMemoryStruct* mem;
+        if (!TRESTDAQManager::GetSharedMemory(shmid, &mem)) {
+          std::cerr << "Cannot get shared memory, please make sure that restDAQManager is running" << std::endl;
+          return;
+        }
+
+      cfgFileName = cfgName->GetText();
+      sprintf(mem->cfgFile, cfgFileName.c_str());
+      mem->startUp = 1;
+      TRESTDAQManager::DetachSharedMemory(&mem);
+    }
+
+    delete startUpMain;
+}
+
 void TRestDAQGUI::cfgButtonPressed() {
-    cfgMain = new TGTransientFrame(gClient->GetRoot(), NULL, 400, 200);
-    // cfgMain->Connect("CloseWindow()", "cfgButtonPressed", this, "CloseWindow()");
+    cfgMain = new TGTransientFrame(gClient->GetRoot(), fMain, 400, 200);
+    cfgMain->DontCallClose(); // to avoid double deletions.
+    cfgMain->Disconnect("CloseWindow()");
+    cfgMain->Connect("CloseWindow()", "TRestDAQGUI", this, "CloseCfgWindow()");
     cfgMain->SetCleanup(kDeepCleanup);
     TGMenuBar* mb = new TGMenuBar(cfgMain);
     cfgMain->AddFrame(mb, new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX, 0, 0, 1, 1));
@@ -376,7 +424,7 @@ void TRestDAQGUI::UpdateInputs() {
 
   int shmid;
   TRESTDAQManager::sharedMemoryStruct* mem;
-  if (!TRESTDAQManager::GetSharedMemory(shmid, &mem, 0)) {
+  if (!TRESTDAQManager::GetSharedMemory(shmid, &mem)) {
         std::cerr << "Cannot get shared memory, please make sure that restDAQManager is running" << std::endl;
         return;
     }
@@ -442,6 +490,7 @@ void TRestDAQGUI::SetRunningState() {
     typeCombo->SetEnabled(kFALSE);
     cfgName->SetEnabled(kFALSE);
     cfgButton->SetEnabled(kFALSE);
+    startUpButton->SetEnabled(kFALSE);
     nEventsEntry->SetEnabled(kFALSE);
 }
 
@@ -451,22 +500,27 @@ void TRestDAQGUI::SetStoppedState() {
     typeCombo->SetEnabled(kTRUE);
     cfgName->SetEnabled(kTRUE);
     cfgButton->SetEnabled(kTRUE);
+    startUpButton->SetEnabled(kTRUE);
     nEventsEntry->SetEnabled(kTRUE);
 }
 
 void TRestDAQGUI::SetUnknownState() {
     startButton->SetEnabled(kFALSE);
     stopButton->SetEnabled(kFALSE);
+    startUpButton->SetEnabled(kFALSE);
     typeCombo->SetEnabled(kFALSE);
     cfgName->SetEnabled(kFALSE);
     cfgButton->SetEnabled(kFALSE);
 }
 
-bool TRestDAQGUI::GetDAQManagerParams() {
+bool TRestDAQGUI::GetDAQManagerParams(double &lastTimeUpdate) {
     int shmid;
     TRESTDAQManager::sharedMemoryStruct* mem;
-    if (!TRESTDAQManager::GetSharedMemory(shmid, &mem, 0)) {
-        std::cerr << "Cannot get shared memory, please make sure that restDAQManager is running" << std::endl;
+    if (!TRESTDAQManager::GetSharedMemory(shmid, &mem, 0, false)) {
+        if( (tNow - lastTimeUpdate) > 30 ){
+          std::cerr << "Cannot get shared memory, please make sure that restDAQManager is running" << std::endl;
+          lastTimeUpdate = tNow;
+        }
         return false;
     }
 
@@ -488,11 +542,14 @@ void* TRestDAQGUI::UpdateThread(void* arg) {
 }
 
 void TRestDAQGUI::UpdateParams() {
+
+  double lastTimeUpdate = 0;
+
     while (!exitGUI) {
         tNow = TRESTDAQ::getCurrentTime();
         std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME));
         int oldStatus = status;
-        if (!GetDAQManagerParams()) {
+        if (!GetDAQManagerParams(lastTimeUpdate)) {
             status = -1;
             if (status != oldStatus) {
                 UpdateOutputs();
