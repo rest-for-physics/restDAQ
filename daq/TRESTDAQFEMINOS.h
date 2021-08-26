@@ -24,11 +24,7 @@ class FEMProxy : public TRESTDAQSocket {
     bool pendingEvent=false;
     FECMetadata fecMetadata;
 
-    void AddBuffer(uint16_t *buf_rcv, const uint16_t &size);
-    void GetNextBuffer(uint16_t *buf_rcv, const uint16_t &size);
-
     std::vector<std::vector<uint16_t>> buffer;
-    
 };
 
 class TRESTDAQFEMINOS : public TRESTDAQ {
@@ -54,8 +50,6 @@ class TRESTDAQFEMINOS : public TRESTDAQ {
     void dataTaking();
     void BroadcastCommand(const char* cmd, std::vector<FEMProxy> &FEMA);
     void SendCommand(const char* cmd, FEMProxy &FEM);
-
-    void saveEvent(unsigned char* buf, int size);
 
     std::vector<FEMProxy> FEMArray;//Vector of FEMINOS
 

@@ -30,7 +30,7 @@ void TRESTDAQFEMINOS::initialize() {
 
   //Start receive and event builder threads
   receiveThread = std::thread( TRESTDAQFEMINOS::ReceiveThread, &FEMArray);
-  eventBuilderThread = std::thread( TRESTDAQFEMINOS::EventBuilderThread, &FEMArray,GetRestRun(),GetSignalEvent());
+  eventBuilderThread = std::thread( TRESTDAQFEMINOS::EventBuilderThread, &FEMArray, GetRestRun(),GetSignalEvent());
 }
 
 void TRESTDAQFEMINOS::startUp(){
@@ -286,19 +286,10 @@ void TRESTDAQFEMINOS::stopDAQ() {
   stopReceiver = true;
   receiveThread.join();
   eventBuilderThread.join();
+
+    for (auto &FEM : FEMArray)
+      FEM.Close();
 }
-
-void TRESTDAQFEMINOS::saveEvent(unsigned char* buf, int size) {
-    // If data supplied, copy to temporary buffer
-    if (size <= 0) return;
-
-    int physChannel=0;
-    std::vector<Short_t> sData(512,0);
-
-    TRestRawSignal rawSignal(physChannel, sData);
-    GetSignalEvent()->AddSignal(rawSignal);
-}
-
 
 void TRESTDAQFEMINOS::BroadcastCommand(const char* cmd, std::vector<FEMProxy> &FEMA){
 
@@ -418,7 +409,7 @@ void TRESTDAQFEMINOS::EventBuilderThread(std::vector<FEMProxy> *FEMA, TRestRun *
                   TRestRawSignal rawSignal(physChannel, sData);
                   sEvent->AddSignal(rawSignal);
                 }
-          }
+            }
 
           FEM.buffer.erase(FEM.buffer.begin());//Erase buffer which has been readout
       }
