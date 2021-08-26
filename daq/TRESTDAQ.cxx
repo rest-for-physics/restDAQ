@@ -16,7 +16,8 @@ TRESTDAQ::TRESTDAQ(TRestRun* rR, TRestRawDAQMetadata* dM) {
     daqMetadata = dM;
     verboseLevel = daqMetadata->GetVerboseLevel();
     fSignalEvent = new TRestRawSignalEvent();
-    restRun->AddEventBranch(fSignalEvent);
+     if(restRun)
+      restRun->AddEventBranch(fSignalEvent);
 }
 
 TRESTDAQ::~TRESTDAQ() {
@@ -28,6 +29,8 @@ Double_t TRESTDAQ::getCurrentTime() {
 }
 
 void TRESTDAQ::FillTree(TRestRun *rR, TRestRawSignalEvent* sEvent) {
+
+  if(rR){
     rR->GetAnalysisTree()->SetEventInfo(sEvent);
     rR->GetEventTree()->Fill();
     rR->GetAnalysisTree()->Fill();
@@ -35,5 +38,6 @@ void TRESTDAQ::FillTree(TRestRun *rR, TRestRawSignalEvent* sEvent) {
     if (event_cnt % 100 == 0) {
         rR->GetEventTree()->AutoSave("SaveSelf");
     }
+  }
   event_cnt++;
 }

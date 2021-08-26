@@ -430,11 +430,13 @@ void TRESTDAQFEMINOS::EventBuilderThread(std::vector<FEMProxy> *FEMA, TRestRun *
       }
 
       if(newEvent && !pendingEvent){//Save Event if closed
-        sEvent->SetID(ev_count);
-        sEvent->SetTime( rR->GetStartTimestamp() + (double) ts * 2E-8 );
-        FillTree(rR,sEvent);
-        sEvent->Initialize();
-        newEvent =false;
+        if(rR){
+          sEvent->SetID(ev_count);
+          sEvent->SetTime( rR->GetStartTimestamp() + (double) ts * 2E-8 );
+          FillTree(rR,sEvent);
+          sEvent->Initialize();
+          newEvent =false;
+        }
       }
 
   }
