@@ -29,7 +29,7 @@ TRESTDAQManager::TRESTDAQManager() {
 TRESTDAQManager::~TRESTDAQManager() {
     int shmid;
     sharedMemoryStruct* sharedMemory;
-    if (GetSharedMemory(shmid, &sharedMemory, 0)) {
+    if (GetSharedMemory(shmid, &sharedMemory)) {
         std::cout << "Destroying shared memory" << std::endl;
         DetachSharedMemory(&sharedMemory);
         shmctl(shmid, IPC_RMID, NULL);
@@ -39,7 +39,7 @@ TRESTDAQManager::~TRESTDAQManager() {
 void TRESTDAQManager::dataTaking() {
     int shmid;
     sharedMemoryStruct* sM;
-    if (!GetSharedMemory(shmid, &sM, 0)) return;
+    if (!GetSharedMemory(shmid, &sM)) return;
 
     if (!TRestTools::fileExists(sM->cfgFile)) {
         std::cout << "File " << sM->cfgFile << " not found, please provide existing config file" << std::endl;
@@ -142,7 +142,7 @@ void TRESTDAQManager::dataTaking() {
 void TRESTDAQManager::StopRun() {
     int shmid;
     sharedMemoryStruct* sharedMemory;
-    if (!GetSharedMemory(shmid, &sharedMemory, 0)) return;
+    if (!GetSharedMemory(shmid, &sharedMemory)) return;
     sharedMemory->abortRun = 1;
     shmdt((sharedMemoryStruct*)sharedMemory);
 }
@@ -150,7 +150,7 @@ void TRESTDAQManager::StopRun() {
 void TRESTDAQManager::ExitManager() {
     int shmid;
     sharedMemoryStruct* sharedMemory;
-    if (!GetSharedMemory(shmid, &sharedMemory, 0)) return;
+    if (!GetSharedMemory(shmid, &sharedMemory)) return;
     sharedMemory->abortRun = 1;
     sharedMemory->exitManager = 1;
     PrintSharedMemory(sharedMemory);
@@ -162,7 +162,7 @@ void TRESTDAQManager::run() {
     sharedMemoryStruct* sharedMemory;
     bool exitMan = false;
     do {
-        if (!GetSharedMemory(shmid, &sharedMemory, 0)) break;
+        if (!GetSharedMemory(shmid, &sharedMemory)) break;
         exitMan = sharedMemory->exitManager;
         if (sharedMemory->startDAQ == 1) {
             std::cout << "DAQ started" << std::endl;
@@ -172,7 +172,7 @@ void TRESTDAQManager::run() {
 
             dataTaking();
 
-            if (!GetSharedMemory(shmid, &sharedMemory, 0)) break;
+            if (!GetSharedMemory(shmid, &sharedMemory)) break;
             sharedMemory->status = 0;
             sharedMemory->startDAQ = 0;
         }
@@ -182,9 +182,9 @@ void TRESTDAQManager::run() {
     } while (!exitMan);
 }
 
-bool TRESTDAQManager::GetSharedMemory(int& sid, sharedMemoryStruct** sM, int flag) {
+bool TRESTDAQManager::GetSharedMemory(int& sid, sharedMemoryStruct** sM, int flag, bool verbose) {
     if ((sid = shmget(TRESTDAQManager::key, sizeof(sharedMemoryStruct), flag)) == -1) {
-        std::cerr << "Error while creating shared memory (shmget) " << std::strerror(errno) << std::endl;
+        if(verbose)std::cerr << "Error while creating shared memory (shmget) " << std::strerror(errno) << std::endl;
         return false;
     }
 
@@ -215,6 +215,7 @@ void TRESTDAQManager::InitializeSharedMemory(sharedMemoryStruct* sM) {
     sprintf(sM->runType, "none");
     sprintf(sM->runName, "none");
     sM->startDAQ = 0;
+    sM->startUp = 0;
     sM->status = 0;
     sM->eventCount = 0;
     sM->nEvents = -1;
@@ -234,7 +235,7 @@ void TRESTDAQManager::AbortThread() {
 
     bool abrt = 0;
     do {
-        if (!GetSharedMemory(shmid, &sharedMemory, 0)) break;
+        if (!GetSharedMemory(shmid, &sharedMemory)) break;
         abrt = sharedMemory->abortRun;
         sharedMemory->eventCount = TRESTDAQ::event_cnt;
         DetachSharedMemory(&sharedMemory);

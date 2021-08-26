@@ -33,6 +33,7 @@ class TRESTDAQManager {
         char runType[256];
         char runName[1024];
         int startDAQ;
+        int startUp;
         int status;
         int eventCount;
         int nEvents;
@@ -45,7 +46,7 @@ class TRESTDAQManager {
     // Shared Memory
     static void InitializeSharedMemory(sharedMemoryStruct* sM);
     static void PrintSharedMemory(sharedMemoryStruct* sM);
-    static bool GetSharedMemory(int& sid, sharedMemoryStruct** sM, int flag);
+    static bool GetSharedMemory(int& sid, sharedMemoryStruct** sM, int flag =0, bool verbose=true);
     static void DetachSharedMemory(sharedMemoryStruct** sM);
 
     static int GetFileSize(const std::string &filename);
