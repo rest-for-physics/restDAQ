@@ -355,7 +355,7 @@ void TRESTDAQFEMINOS::ReceiveThread( std::vector<FEMProxy> *FEMA ) {
 
         for (auto &FEM : *FEMA){
           if (FD_ISSET(FEM.client, &readfds_work)){
-            uint16_t *buf_rcv;
+            uint16_t buf_rcv[8192/(sizeof(uint16_t))];
             int length = recvfrom(FEM.client, buf_rcv, 8192, 0, (struct sockaddr*)&FEM.remote, &FEM.remote_size);
 
               if (length < 0) {
@@ -366,7 +366,7 @@ void TRESTDAQFEMINOS::ReceiveThread( std::vector<FEMProxy> *FEMA ) {
             if(length<=2)continue;//empty frame?
 
             size_t size = length/sizeof(uint16_t);//Note that length is in bytes while size is uint16_t
-            std::vector<uint16_t> frame(buf_rcv+1,buf_rcv + size-1);//skipping first word after the UDP header
+            std::vector<uint16_t> frame(&buf_rcv[1],buf_rcv + size-1);//skipping first word after the UDP header
             FEM.buffer.emplace_back(std::move(frame));
               if(FEM.buffer.size() >= (MAX_BUFFER_SIZE -1) ){
                 std::string error ="Buffer FULL on FEM: "+ std::to_string(FEM.fecMetadata.id);
