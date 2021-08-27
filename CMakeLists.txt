@@ -12,8 +12,18 @@ execute_process(COMMAND root-config --cflags OUTPUT_VARIABLE ROOT_CFLAGS)
 string(STRIP ${ROOT_CFLAGS} ROOT_CFLAGS)
 message("-- Found ROOT version: ${ROOT_VERSION} with compilation flags: ${ROOT_CFLAGS} and libraries: ${ROOT_LIBRARIES}")
 
-# Find REST
-find_package(REST REQUIRED)
+#Find REST
+IF(NOT DEFINED REST_PATH)
+        IF(DEFINED ENV{REST_PATH})
+                set(REST_PATH $ENV{REST_PATH})
+        ELSE()
+                message(FATAL_ERROR "ERROR ::: REST_PATH must be defined as an environment variable and point to REST install directory")
+                return()
+        ENDIF()
+ENDIF()
+set(CMAKE_INSTALL_PREFIX ${REST_PATH})
+message(STATUS "Using REST PATH: " ${REST_PATH})
+
 message("-- Found REST version: ${REST_VERSION} with libraries: ${REST_LIBRARIES}")
 # TODO: Implement a check for '-lRestRaw' in ${REST_LIBRARIES} (and exit if not found)
 # Still if we use -DREST_DAQ=ON at the framework compilation it will enable RawLib by default
@@ -24,7 +34,13 @@ endif ()
 
 #-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 #Set include and lib
-set(incdir ${PROJECT_SOURCE_DIR}/include ${ROOT_INCLUDE_DIRS} ${REST_INCLUDE_DIRS})
+if(DEFINED rest_include_dirs)
+	set(incdir ${PROJECT_SOURCE_DIR}/include ${ROOT_INCLUDE_DIRS} ${rest_include_dirs})
+else()
+	set(incdir ${PROJECT_SOURCE_DIR}/include ${ROOT_INCLUDE_DIRS} ${REST_PATH}/include)
+endif()
+
+
 set(lnklib ${ROOT_LIBRARIES} -lGui RestRaw)
 string(STRIP "${lnklib}" lnklib)
 
