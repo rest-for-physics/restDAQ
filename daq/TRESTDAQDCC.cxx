@@ -52,8 +52,8 @@ void TRESTDAQDCC::configure() {
         sprintf(cmd, "fec %d", fec.id);
         SendCommand(cmd);
           for (int a = 0; a < 4; a++) {
-            if(!fec.asic[a].isActive)continue;
-            unsigned int reg = ( (fec.asic[a].shappingTime & 0xF) << 3) | ( (fec.asic[a].gain & 0x3) << 1) ;
+            if(!fec.asic_isActive[a])continue;
+            unsigned int reg = ( (fec.asic_shappingTime[a] & 0xF) << 3) | ( (fec.asic_gain[a] & 0x3) << 1) ;
             sprintf(cmd, "asic %d write 1 0x%X", a, reg);  // Gain and shapping time
             SendCommand(cmd);
             sprintf(cmd, "asic %d write 2 0xA000", a);  // Output buffers
@@ -103,8 +103,8 @@ void TRESTDAQDCC::pedestal() {
         SendCommand("fem 0");
           for(auto fec : GetDAQMetadata()->GetFECs()) {
             for (int a = 0; a < 4; a++) {
-              if(!fec.asic[a].isActive)continue;
-              sprintf(cmd, "hped acc %d %d %d:%d", fec.id, a, fec.asic[a].channelStart, fec.asic[a].channelEnd);
+              if(!fec.asic_isActive[a])continue;
+              sprintf(cmd, "hped acc %d %d %d:%d", fec.id, a, fec.asic_channelStart[a], fec.asic_channelEnd[a]);
               SendCommand(cmd);  // Get pedestals
             }
           }   
@@ -113,12 +113,12 @@ void TRESTDAQDCC::pedestal() {
     SendCommand("fem 0");
       for(auto fec : GetDAQMetadata()->GetFECs()) {
             for (int a = 0; a < 4; a++) {
-              if(!fec.asic[a].isActive)continue;
-              sprintf(cmd, "hped getsummary %d %d %d:%d", fec.id, a, fec.asic[a].channelStart, fec.asic[a].channelEnd);
+              if(!fec.asic_isActive[a])continue;
+              sprintf(cmd, "hped getsummary %d %d %d:%d", fec.id, a, fec.asic_channelStart[a], fec.asic_channelEnd[a]);
               SendCommand(cmd, DCCPacket::packetType::BINARY, 1);  // Get summary
-              sprintf(cmd, "hped centermean %d %d %d:%d %d", fec.id, a, fec.asic[a].channelStart, fec.asic[a].channelEnd, fec.asic[a].pedCenter);
+              sprintf(cmd, "hped centermean %d %d %d:%d %d", fec.id, a, fec.asic_channelStart[a], fec.asic_channelEnd[a], fec.asic_pedCenter[a]);
               SendCommand(cmd);  // Set mean
-              sprintf(cmd, "hped setthr %d %d %d:%d %d %.1f", fec.id, a, fec.asic[a].channelStart, fec.asic[a].channelEnd, fec.asic[a].pedCenter, fec.asic[a].pedThr);
+              sprintf(cmd, "hped setthr %d %d %d:%d %d %.1f", fec.id, a, fec.asic_channelStart[a], fec.asic_channelEnd[a], fec.asic_pedCenter[a], fec.asic_pedThr[a]);
               SendCommand(cmd);  // Set threshold
             }
           }
@@ -145,8 +145,8 @@ void TRESTDAQDCC::dataTaking() {
         GetSignalEvent()->SetTime(getCurrentTime());
           for(auto fec : GetDAQMetadata()->GetFECs()) {
             for (int a = 0; a < 4; a++) {
-              if(!fec.asic[a].isActive)continue;
-              sprintf(cmd, "areq %d %d %d %d %d", GetDAQMetadata()->GetCompressMode(), fec.id, a, fec.asic[a].channelStart, fec.asic[a].channelEnd);
+              if(!fec.asic_isActive[a])continue;
+              sprintf(cmd, "areq %d %d %d %d %d", GetDAQMetadata()->GetCompressMode(), fec.id, a, fec.asic_channelStart[a], fec.asic_channelEnd[a]);
               SendCommand(cmd, DCCPacket::packetType::BINARY);
             }
           }
@@ -179,7 +179,7 @@ void TRESTDAQDCC::saveEvent(unsigned char* buf, int size) {
 
     if (physChannel < 0) return;
 
-    if (verboseLevel >= REST_Debug)
+    if (verboseLevel >= TRestStringOutput::REST_Verbose_Level::REST_Debug)
         std::cout << "FEC " << fec << " asic " << asic << " channel " << channel << " physChann " << physChannel << "\n";
 
    //bool compress = GET_RB_COMPRESS(ntohs(dp->args) );
@@ -212,7 +212,7 @@ DCCPacket::packetReply TRESTDAQDCC::SendCommand(const char* cmd, DCCPacket::pack
         //return DCCPacket::packetReply::ERROR;
     }
 
-      if (verboseLevel >= REST_Debug)std::cout<<"Command sent "<<cmd<<std::endl;
+      if (verboseLevel >= TRestStringOutput::REST_Verbose_Level::REST_Debug)std::cout<<"Command sent "<<cmd<<std::endl;
 
     // wait for incoming messages
     bool done = false;
@@ -234,7 +234,7 @@ DCCPacket::packetReply TRESTDAQDCC::SendCommand(const char* cmd, DCCPacket::pack
                 if (errno == EWOULDBLOCK || errno == EAGAIN) {
                     if (cnt % 1000 == 0) {
                         duration = std::chrono::duration_cast<std::chrono::duration<int>>(std::chrono::steady_clock::now() - startTime);
-                        if (verboseLevel >= REST_Extreme) fprintf(stderr, "socket() failed: %s\n", strerror(errno));
+                        if (verboseLevel >= TRestStringOutput::REST_Verbose_Level::REST_Extreme) fprintf(stderr, "socket() failed: %s\n", strerror(errno));
                     }
                 } else {
                   std::string error ="recvfrom failed: " + std::string(strerror(errno));
@@ -264,7 +264,7 @@ DCCPacket::packetReply TRESTDAQDCC::SendCommand(const char* cmd, DCCPacket::pack
         }
 
         // show packet if desired
-        if (verboseLevel >= REST_Debug) {
+        if (verboseLevel >= TRestStringOutput::REST_Verbose_Level::REST_Debug) {
             printf("dcc().rep(): %d bytes of data \n", length);
             if (pckType == DCCPacket::packetType::BINARY) {
                 DCCPacket::DataPacket* data_pk = (DCCPacket::DataPacket*)buf_ual;
@@ -276,7 +276,7 @@ DCCPacket::packetReply TRESTDAQDCC::SendCommand(const char* cmd, DCCPacket::pack
         }
 
         if ((*buf_ual == '-')) {  // ERROR ASCII packet
-            if (verboseLevel >= REST_Debug) printf("ERROR packet: %s\n", buf_ual);
+            if (verboseLevel >= TRestStringOutput::REST_Verbose_Level::REST_Debug) printf("ERROR packet: %s\n", buf_ual);
             return DCCPacket::packetReply::RETRY;
         }
 

@@ -16,6 +16,7 @@
 
 class TRESTDAQSocket {
    public:
+    TRESTDAQSocket(){ };
     int client;
     struct sockaddr_in target;
     unsigned char* target_adr;

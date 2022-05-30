@@ -157,16 +157,21 @@
 
 #define CURRENT_FRAMING_VERSION 0
 
+#include "RingBuffer.h"
+#include "TRestRawSignalEvent.h"
+
+#include <deque>
+
 namespace FEMINOSPacket {
 
   //enum class packetReply { ERROR = -1, RETRY = 0, OK = 1 };
   //enum class packetType { ASCII = 0, BINARY = 1 };
 
   void DataPacket_Print(uint16_t *fr, const uint16_t &size);
-  void HistoStat_Print (uint16_t *fr, int &sz_rd, const uint16_t &hitCount);
+  int HistoStat_Print (uint16_t *fr, int &sz_rd, const uint16_t &hitCount);
   uint32_t GetUInt32FromBuffer(uint16_t *fr, int & sz_rd);
   uint32_t GetUInt32FromBufferInv(uint16_t *fr, int & sz_rd);
-  bool GetDataFrame(uint16_t *fr, const uint16_t &size, std::vector<Short_t> &sData, int &physChannel, uint32_t &ev_count, uint64_t &ts, bool &endOfEvent);
+  bool GetNextEvent(std::deque <uint16_t> &buffer, TRestRawSignalEvent* sEvent, uint64_t &tS, uint32_t &ev_count);
   bool isDataFrame(uint16_t *fr);
 
 }

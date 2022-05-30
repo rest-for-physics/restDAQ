@@ -106,7 +106,7 @@ void TRestDAQGUI::LoadDecodingFile(const std::string& decodingFile) {
     std::string line;
 
     while (getline(dec, line)) {
-        istringstream ss(line);
+        std::istringstream ss(line);
         int id, chan;
         if (ss >> id >> chan) decoding[id] = chan;
         if (chan > nStrips) nStrips = chan;

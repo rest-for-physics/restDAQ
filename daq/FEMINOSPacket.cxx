@@ -2,6 +2,7 @@
 #include <FEMINOSPacket.h>
 
 #include <cstdio>
+#include <inttypes.h>
 
 void FEMINOSPacket::DataPacket_Print (uint16_t *fr, const uint16_t &size){
 
@@ -24,6 +25,13 @@ void FEMINOSPacket::DataPacket_Print (uint16_t *fr, const uint16_t &size){
       printf( "Card %02d Chip %01d Channel_Hit_Count %02d\n", r0, r1, r2);
       fr++;
       sz_rd++;
+    } else if ((*fr & PFX_14_BIT_CONTENT_MASK) == PFX_CARD_CHIP_CHAN_HISTO){
+      r0 = GET_CARD_IX(*fr);
+      r1 = GET_CHIP_IX(*fr);
+      r2 = GET_CHAN_IX(*fr);
+      printf( "Card %02d Chip %01d Channel_Histo_Index %02d\n", r0, r1, r2);
+      fr++;
+      sz_rd++;
     } else if ((*fr & PFX_12_BIT_CONTENT_MASK) == PFX_ADC_SAMPLE) {
       r0 = GET_ADC_DATA(*fr);
       printf("%03d 0x%04x (%4d)\n", si, r0, r0);
@@ -34,7 +42,7 @@ void FEMINOSPacket::DataPacket_Print (uint16_t *fr, const uint16_t &size){
       r0 = GET_LAT_HISTO_BIN(*fr);
       fr++;
       sz_rd++;
-      uint32_t tmp = GetUInt32FromBufferInv(fr, sz_rd);
+      uint32_t tmp = GetUInt32FromBufferInv(fr, sz_rd);fr+=2;
       printf("%03d %03d\n", r0, tmp);
     } else if ((*fr & PFX_12_BIT_CONTENT_MASK) == PFX_CHIP_LAST_CELL_READ){
         for(int i=0;i<4;i++){
@@ -94,9 +102,9 @@ void FEMINOSPacket::DataPacket_Print (uint16_t *fr, const uint16_t &size){
     } else if ((*fr & PFX_9_BIT_CONTENT_MASK) == PFX_START_OF_MFRAME) {
       r0 = GET_FRAMING_VERSION(*fr);
       r1 = GET_FEMID(*fr);
+      printf("--- Start of Moni Frame (V.%01d) FEM %02d --\n", r0, r1);
       fr++;
       sz_rd++;
-      printf("--- Start of Moni Frame (V.%01d) FEM %02d --\n", r0, r1);
       printf("Filled with %d bytes\n", *fr);
       fr++;
       sz_rd++;
@@ -113,12 +121,13 @@ void FEMINOSPacket::DataPacket_Print (uint16_t *fr, const uint16_t &size){
       r0 = GET_ASCII_LEN(*fr);
       fr++;
       sz_rd++;
+      printf("ASCII Msg length: %d\n",r0);
         for (int j=0;j<r0/2; j++){
-          printf("%c%c", ((*fr) >> 8),((*fr) & 0xFF ) );
+          printf("%c%c", ((*fr) & 0xFF ),((*fr) >> 8) );
           fr++;
           sz_rd++;
         }
-        if ((*fr >> 8) & 0x1){// Skip the null string parity
+        if ((*fr) & 0x1){// Skip the null string parity
           fr++;
           sz_rd++;
         }
@@ -136,9 +145,9 @@ void FEMINOSPacket::DataPacket_Print (uint16_t *fr, const uint16_t &size){
       ts |= ( (*fr) << 24);
       fr++;
       sz_rd++;
-      printf("Time %d\n", ts);
+      printf("Time %" PRId64 "\n", ts);
 
-      uint32_t evC =  GetUInt32FromBufferInv(fr, sz_rd);
+      uint32_t evC =  GetUInt32FromBufferInv(fr, sz_rd);fr+=2;
       printf("Event_Count %d\n", evC);
 
     } else if ((*fr & PFX_4_BIT_CONTENT_MASK) == PFX_END_OF_EVENT){
@@ -158,7 +167,7 @@ void FEMINOSPacket::DataPacket_Print (uint16_t *fr, const uint16_t &size){
       fr++;
       sz_rd++;
 
-      HistoStat_Print (fr, sz_rd, r0);
+      fr +=HistoStat_Print (fr, sz_rd, r0);
       
     } else if ((*fr & PFX_0_BIT_CONTENT_MASK) == PFX_END_OF_FRAME) {
       printf("----- End of Frame -----\n");
@@ -177,22 +186,25 @@ void FEMINOSPacket::DataPacket_Print (uint16_t *fr, const uint16_t &size){
       fr++;
       sz_rd++;
       
-      HistoStat_Print (fr, sz_rd, 0);
+      fr +=HistoStat_Print (fr, sz_rd, 0);
 
     } else if (*fr == PFX_PEDESTAL_HSTAT) {
       printf("\nPedestal Histogram Statistics\n");
       fr++;
       sz_rd++;
 
-      HistoStat_Print (fr, sz_rd, 0);
+      fr+=HistoStat_Print (fr, sz_rd, 0);
 
     } else if (*fr == PFX_PEDESTAL_H_MD) {
       fr++;
       sz_rd++;
 
-      uint32_t mean = GetUInt32FromBuffer(fr, sz_rd);
-      uint32_t std_dev = GetUInt32FromBuffer(fr, sz_rd);
+      uint32_t mean = GetUInt32FromBufferInv(fr, sz_rd);fr+=2;
+      uint32_t std_dev = GetUInt32FromBufferInv(fr, sz_rd);fr+=2;
       printf("Mean/Std_dev : %.2f  %.2f\n", (float)mean/100., (float)std_dev/100.);
+
+      fr++;
+      sz_rd++;
 
     } else if (*fr == PFX_SHISTO_BINS) {
       printf("Threshold Turn-on curve\n");
@@ -209,7 +221,7 @@ void FEMINOSPacket::DataPacket_Print (uint16_t *fr, const uint16_t &size){
       sz_rd++;
 
       uint32_t tmp_i[9];
-        for(int j=0;j<9;j++)tmp_i[j] = GetUInt32FromBuffer(fr, sz_rd);
+        for(int j=0;j<9;j++){tmp_i[j] = GetUInt32FromBuffer(fr, sz_rd);fr+=2;}
 
       printf("Server RX stat: cmd_count=%d daq_req=%d daq_timeout=%d daq_delayed=%d daq_missing=%d cmd_errors=%d\n", tmp_i[0], tmp_i[1], tmp_i[2], tmp_i[3], tmp_i[4], tmp_i[5]);
       printf("Server TX stat: cmd_replies=%d daq_replies=%d daq_replies_resent=%d\n", tmp_i[6], tmp_i[7], tmp_i[8]);
@@ -219,28 +231,32 @@ void FEMINOSPacket::DataPacket_Print (uint16_t *fr, const uint16_t &size){
       sz_rd++;
     }
 
-  } while (size <sz_rd);
+  } while (sz_rd < size);
 
-  if(sz_rd > size)printf("Format error: read %d bytes but packet size is %d\n", sz_rd, size);
+  if(sz_rd > size)printf("Format error: read %d words but packet size is %d\n", sz_rd, size);
 
 }
 
-void FEMINOSPacket::HistoStat_Print (uint16_t *fr,  int &sz_rd, const uint16_t &hitCount) {
+int FEMINOSPacket::HistoStat_Print (uint16_t *fr,  int &sz_rd, const uint16_t &hitCount) {
 
-  printf("Min Bin    : %d\n", GetUInt32FromBuffer(fr, sz_rd));
-  printf("Max Bin    : %d\n", GetUInt32FromBuffer(fr, sz_rd));
-  printf("Bin Width  : %d\n", GetUInt32FromBuffer(fr, sz_rd));
-  printf("Bin Count  : %d\n", GetUInt32FromBuffer(fr, sz_rd));
-  printf("Min Value  : %d\n", GetUInt32FromBuffer(fr, sz_rd));
-  printf("Max Value  : %d\n", GetUInt32FromBuffer(fr, sz_rd));
-  printf("Mean       : %.2f\n", ((float) GetUInt32FromBuffer(fr, sz_rd)) / 100.0);
-  printf("Std Dev    : %.2f\n", ((float) GetUInt32FromBuffer(fr, sz_rd)) / 100.0);
-  printf("Entries    : %d\n", GetUInt32FromBuffer(fr, sz_rd));
+  int length=sz_rd;
+
+  printf("Min Bin    : %d\n", GetUInt32FromBuffer(fr, sz_rd));fr+=2;
+  printf("Max Bin    : %d\n", GetUInt32FromBuffer(fr, sz_rd));fr+=2;
+  printf("Bin Width  : %d\n", GetUInt32FromBuffer(fr, sz_rd));fr+=2;
+  printf("Bin Count  : %d\n", GetUInt32FromBuffer(fr, sz_rd));fr+=2;
+  printf("Min Value  : %d\n", GetUInt32FromBuffer(fr, sz_rd));fr+=2;
+  printf("Max Value  : %d\n", GetUInt32FromBuffer(fr, sz_rd));fr+=2;
+  printf("Mean       : %.2f\n", ((float) GetUInt32FromBuffer(fr, sz_rd)) / 100.0);fr+=2;
+  printf("Std Dev    : %.2f\n", ((float) GetUInt32FromBuffer(fr, sz_rd)) / 100.0);fr+=2;
+  printf("Entries    : %d\n", GetUInt32FromBuffer(fr, sz_rd));fr+=2;
     // Get all bins
     for (int j=0; j<hitCount; j++){
-      printf("Bin(%2d) = %9d\n", j, GetUInt32FromBuffer(fr, sz_rd));
+      printf("Bin(%2d) = %9d\n", j, GetUInt32FromBuffer(fr, sz_rd));fr+=2;
     }
 
+  length -= sz_rd;
+  return length;
 }
 
 uint32_t FEMINOSPacket::GetUInt32FromBuffer(uint16_t *fr, int & sz_rd){
@@ -267,73 +283,86 @@ uint32_t FEMINOSPacket::GetUInt32FromBufferInv(uint16_t *fr, int & sz_rd){
   return res;
 }
 
-bool FEMINOSPacket::GetDataFrame(uint16_t *fr, const uint16_t &size, std::vector<Short_t> &sData, int &physChannel, uint32_t &ev_count, uint64_t &ts, bool &endOfEvent){
+bool FEMINOSPacket::GetNextEvent(std::deque <uint16_t> &buffer, TRestRawSignalEvent* sEvent, uint64_t &tS, uint32_t &ev_count){
 
-  if ((*fr & PFX_9_BIT_CONTENT_MASK) != PFX_START_OF_DFRAME)return false;
-  uint16_t version = GET_FRAMING_VERSION(*fr);
-  uint16_t femID = GET_FEMID(*fr);
-  fr++;
-  int sz_rd = 1;
-  uint16_t frameSize = *fr;
-  fr++;
-  sz_rd++;
+  bool endOfEvent = false;
+  int physChannel;
+  //std::cout<<__PRETTY_FUNCTION__<<"  "<<buffer.size()<<std::endl;
+  while (!endOfEvent && !buffer.empty()){
+    bool done = false;
+    //std::cout<<"Val 0x"<<std::hex<<buffer.front()<<std::dec<<" " <<buffer.front()<<std::endl;
 
     //TimeStamp and Event Count, once for every event
-    if ((*fr & PFX_4_BIT_CONTENT_MASK) != PFX_START_OF_EVENT){
-      fr++;
-      sz_rd++;
-      
-      ts = *fr;
-      fr++;
-      sz_rd++;
-      ts |= ( (*fr) << 16);
-      fr++;
-      sz_rd++;
-      ts |= ( (*fr) << 24);
-      fr++;
-      sz_rd++;
+    if ((buffer.front() & PFX_4_BIT_CONTENT_MASK) == PFX_START_OF_EVENT){
+      //std::cout<<"START OF EVENT "<<std::endl;
+      buffer.pop_front();
+      tS = buffer.front();
+      buffer.pop_front();
+      tS |= ( buffer.front() << 16);
+      buffer.pop_front();
+      tS |= ( buffer.front() << 24);
+      buffer.pop_front();
 
       //Event count
-      ev_count =  GetUInt32FromBufferInv(fr, sz_rd);
-    }
+      ev_count = buffer.front();
+      buffer.pop_front();
+      ev_count |=  ( buffer.front() << 16);
+      buffer.pop_front();
 
-    //Optional channel hit count
-    if ((*fr & PFX_14_BIT_CONTENT_MASK) == PFX_CARD_CHIP_CHAN_HIT_CNT){
-      fr++;
-      sz_rd++;
-    }
+      //std::cout<<"EvCnt "<<ev_count<<" TS "<<(double)tS <<std::endl;
+    } else if ((buffer.front() & PFX_14_BIT_CONTENT_MASK) == PFX_CARD_CHIP_CHAN_HIT_CNT){
+      //printf( "Card %02d Chip %01d Channel_Hit_Count %02d\n", GET_CARD_IX(buffer.front()), GET_CHIP_IX(buffer.front()), GET_CHAN_IX(buffer.front()) );
+      buffer.pop_front();
+    } else if ((buffer.front() & PFX_12_BIT_CONTENT_MASK) == PFX_CHIP_LAST_CELL_READ){
+      
+      for(int i=0;i<4;i++){
+        //printf( "Chip %01d Last_Cell_Read %03d (0x%03x)\n",GET_LST_READ_CELL_CHIP_IX(buffer.front()), GET_LST_READ_CELL(buffer.front()), GET_LST_READ_CELL(buffer.front()));
+          buffer.pop_front();
+      }
+    } else if ( (buffer.front() & PFX_14_BIT_CONTENT_MASK) == PFX_CARD_CHIP_CHAN_HIT_IX ) {
+      uint16_t cardID = GET_CARD_IX(buffer.front());
+      uint16_t chipID = GET_CHIP_IX(buffer.front());
+      uint16_t chID = GET_CHAN_IX(buffer.front());
+      physChannel = chID + chipID*72 + cardID*288;
+      //std::cout<<" Card "<<cardID<<" Chip "<<chipID<<" Channel "<<chID<<" PhysChann "<<physChannel<<std::endl;
+      buffer.pop_front();
+      int timeBin=0;
+      std::vector<Short_t> sData(512,0);
+        while( (buffer.front() & PFX_12_BIT_CONTENT_MASK) == PFX_ADC_SAMPLE ||
+               (buffer.front() & PFX_9_BIT_CONTENT_MASK ) == PFX_TIME_BIN_IX){
 
-    if ((*fr & PFX_14_BIT_CONTENT_MASK) != PFX_CARD_CHIP_CHAN_HIT_IX)return false;
-
-  uint16_t cardID = GET_CARD_IX(*fr);
-  uint16_t chipID = GET_CHIP_IX(*fr);
-  uint16_t chID = GET_CHAN_IX(*fr);
-  physChannel = chID + chipID*4 + cardID*72*4;
-  fr++;
-  sz_rd++;
-
-  int timeBin =0;
-
-    while ( size <sz_rd && 
-           ( ( (*fr & PFX_0_BIT_CONTENT_MASK) != PFX_END_OF_FRAME) ||
-             ( (*fr & PFX_4_BIT_CONTENT_MASK) != PFX_END_OF_EVENT) ) ) {
-        if ((*fr & PFX_9_BIT_CONTENT_MASK) == PFX_TIME_BIN_IX) {
-          timeBin = GET_TIME_BIN(*fr);
-        } else if ((*fr & PFX_12_BIT_CONTENT_MASK) == PFX_ADC_SAMPLE) {
-          if(timeBin<512)sData[timeBin] = std::move(GET_ADC_DATA(*fr));
-        } else if (*fr == 0) {
-          printf("skipping null word\n");
-        } else {
-          printf("word(%04d) : 0x%x (%d) unknown data frame\n", sz_rd/2, *fr, *fr);
-          return false;
+            if ((buffer.front() & PFX_9_BIT_CONTENT_MASK) == PFX_TIME_BIN_IX) {
+              timeBin = GET_TIME_BIN(buffer.front());
+            } else if ((buffer.front() & PFX_12_BIT_CONTENT_MASK) == PFX_ADC_SAMPLE) {
+              if(timeBin<512)sData[timeBin] = std::move(GET_ADC_DATA(buffer.front()));
+              timeBin++;
+              //std::cout<<"TimeBin "<<timeBin<<" "<<GET_ADC_DATA(buffer.front())<<std::endl;
+            }
+          buffer.pop_front();
         }
-      fr++;
-      sz_rd++;
+
+      TRestRawSignal rawSignal(physChannel, sData);
+      sEvent->AddSignal(rawSignal);
+
+    } else if ( (buffer.front() & PFX_4_BIT_CONTENT_MASK) == PFX_END_OF_EVENT ){
+      endOfEvent=true;
+      //std::cout<<"END OF EVENT ";
+      buffer.pop_front();
+      //std::cout<<" event size "<<buffer.front()<<std::endl;
+      buffer.pop_front();//Skip event size
+      break;
+    } else if ( (buffer.front() & PFX_4_BIT_CONTENT_MASK) == PFX_END_OF_FRAME ){
+      //std::cout<<" END OF FRAME "<<std::endl;
+      buffer.pop_front();
+      break;
+    } else {
+       if(buffer.front() !=0)
+         printf("WARNING: word : 0x%x (%d) unknown data\n", buffer.front(),buffer.front());
+      buffer.pop_front();
     }
-
-  endOfEvent = ( (*fr & PFX_4_BIT_CONTENT_MASK) == PFX_END_OF_EVENT);
-
-  return true;
+  }
+  //std::cout<<__PRETTY_FUNCTION__<<" END "<<buffer.size()<<std::endl;
+  return endOfEvent;
 
 }
 

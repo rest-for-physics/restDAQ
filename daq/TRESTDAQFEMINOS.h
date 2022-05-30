@@ -14,17 +14,29 @@ Based on mclient program from Denis Calvet
 
 #include "TRESTDAQ.h"
 #include "TRESTDAQSocket.h"
+#include "RingBuffer.h"
 
 #include <iostream>
 #include <thread>
 #include <memory>
+#include <deque>
 
 class FEMProxy : public TRESTDAQSocket {
+  
   public:
+      FEMProxy(){
+      }
     bool pendingEvent=false;
     FECMetadata fecMetadata;
+    //std::atomic_int
+    int cmd_sent=0;
+    //std::atomic_int
+    int cmd_rcv=0;
 
-    std::vector<std::vector<uint16_t>> buffer;
+    std::deque <uint16_t> buffer;
+
+    inline static std::mutex mutex_socket;
+    inline static std::mutex mutex_mem;
 };
 
 class TRESTDAQFEMINOS : public TRESTDAQ {
@@ -40,16 +52,16 @@ class TRESTDAQFEMINOS : public TRESTDAQ {
     static void ReceiveThread(std::vector<FEMProxy> *FEMA);
     static void ReceiveBuffer(FEMProxy &FEM);
     static void EventBuilderThread(std::vector<FEMProxy> *FEMA, TRestRun *rR, TRestRawSignalEvent* sEvent);
+    static void waitForCmd(FEMProxy &FEM);
     static std::atomic<bool> stopReceiver;
 
     inline static std::mutex mutex;
-    inline static const uint16_t MAX_BUFFER_SIZE = 512;
 
   private:
     void pedestal();
     void dataTaking();
-    void BroadcastCommand(const char* cmd, std::vector<FEMProxy> &FEMA);
-    void SendCommand(const char* cmd, FEMProxy &FEM);
+    void BroadcastCommand(const char* cmd, std::vector<FEMProxy> &FEMA, bool wait=true);
+    void SendCommand(const char* cmd, FEMProxy &FEM, bool wait=true);
 
     std::vector<FEMProxy> FEMArray;//Vector of FEMINOS
 
