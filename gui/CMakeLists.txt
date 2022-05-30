@@ -12,7 +12,7 @@ add_library(RestDAQGUI SHARED TRestDAQGUI.cxx G__TRestDAQGUI.cxx)
 
 target_include_directories(RestDAQGUI PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${rest_include_dirs})
 
-target_link_libraries(RestDAQGUI RESTDAQ ${lnklib} -lCore -lGui -lpthread RestRaw)
+target_link_libraries(RestDAQGUI RESTDAQ ${lnklib} -lpthread RestRaw)
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         DESTINATION .

@@ -7,7 +7,7 @@ message("===============  ${PROJECT_NAME}  ==============")
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../../cmake ${CMAKE_MODULE_PATH})
 
 # Find ROOT
-find_package(ROOT REQUIRED COMPONENTS RIO Geom)
+find_package(ROOT REQUIRED COMPONENTS Gui)
 execute_process(COMMAND root-config --cflags OUTPUT_VARIABLE ROOT_CFLAGS)
 string(STRIP ${ROOT_CFLAGS} ROOT_CFLAGS)
 message("-- Found ROOT version: ${ROOT_VERSION} with compilation flags: ${ROOT_CFLAGS} and libraries: ${ROOT_LIBRARIES}")
@@ -41,7 +41,7 @@ else()
 endif()
 
 
-set(lnklib ${ROOT_LIBRARIES} -lGui RestRaw)
+set(lnklib ${ROOT_LIBRARIES} RestRaw)
 string(STRIP "${lnklib}" lnklib)
 
 add_subdirectory(daq)
