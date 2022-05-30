@@ -53,7 +53,7 @@ TRestDAQGUI::TRestDAQGUI(const int& p, const int& q, std::string decodingFile) {
     fECanvas->GetCanvas()->cd(1);
     instantRateGraph->Draw();
 
-    spectrum = new TH1I("Spectrum", "Spectrum", 1000, 0, 100000);
+    spectrum = new TH1I("Spectra", "Spectra", 1000, 0, 100000);
     spectrum->GetXaxis()->SetTitle("Amplitude");
     spectrum->GetYaxis()->SetTitle("Counts");
     fECanvas->GetCanvas()->cd(2);
@@ -84,8 +84,8 @@ TRestDAQGUI::TRestDAQGUI(const int& p, const int& q, std::string decodingFile) {
 
     tNow = TRESTDAQ::getCurrentTime();
 
-    pthread_create(&updateT, NULL, UpdateThread, (void*)this);
-    pthread_create(&readerT, NULL, ReaderThread, (void*)this);
+    pthread_create(&updateT, NULL, UpdateThread, NULL);
+    pthread_create(&readerT, NULL, ReaderThread, NULL);
 }
 
 TRestDAQGUI::~TRestDAQGUI() {
@@ -536,8 +536,8 @@ bool TRestDAQGUI::GetDAQManagerParams(double &lastTimeUpdate) {
 }
 
 void* TRestDAQGUI::UpdateThread(void* arg) {
-    TRestDAQGUI* inst = (TRestDAQGUI*)arg;
-    inst->UpdateParams();
+    //TRestDAQGUI* inst = (TRestDAQGUI*)arg;
+    UpdateParams();
     return NULL;
 }
 
@@ -570,8 +570,8 @@ void TRestDAQGUI::UpdateParams() {
 }
 
 void* TRestDAQGUI::ReaderThread(void* arg) {
-    TRestDAQGUI* inst = (TRestDAQGUI*)arg;
-    inst->READ();
+    //TRestDAQGUI* inst = (TRestDAQGUI*)arg;
+    READ();
     return NULL;
 }
 

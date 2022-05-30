@@ -38,41 +38,45 @@
 
 #include "TRestRawSignalEvent.h"
 
+constexpr int PLOTS_UPDATE_TIME = 5;//Seconds to update the plots
+constexpr int SLEEP_TIME = 500;//Miliseconds to sleep
+constexpr int N_SIGMA_THRESHOLD = 5;//Sigma threshold to apply to the pulses to take into accout in the writting
+constexpr int MIN_FILE_SIZE = 15*1024;//Minimum file size for a file to be opened
+
 class TRestDAQGUI {
    public:
     TGMainFrame* fMain;
     TGVerticalFrame* fVLeft;
-    TGTextButton *startButton, *stopButton, *quitButton, *cfgButton, *startUpButton;
-    TGLabel *statusLabel, *runLabel, *rateLabel, *counterLabel, *cfgLabel, *typeLabel, *nEventsLabel;
-    TGTextEntry* runName;
-    TGTextEntry* nEventsEntry;
+    static inline TGTextButton *startButton, *stopButton, *quitButton, *cfgButton, *startUpButton;
+    TGLabel *runLabel, *cfgLabel, *typeLabel, *nEventsLabel;
+    static inline TGLabel *statusLabel,*counterLabel, *rateLabel;
+    static inline TGTextEntry* runName, *cfgName, *nEventsEntry;
 
-    TGTextEntry* cfgName;
-
-    TGComboBox* typeCombo;
+    static inline TGComboBox* typeCombo;
 
     TGFileContainer* fContents;
     TGTransientFrame* cfgMain;
     TGTransientFrame* startUpMain;
 
-    std::string cfgFileName = "none", runN = "none";
-    int status = -1;
+    std::string cfgFileName = "none";
+    static inline std::string runN = "none";
+    static inline int status = -1;
 
-    double startTimeEvent;
-    double oldTime = 0, tNow;
-    int rateGraphCounter = 0;
-    int nStrips = 0;
+    static inline double oldTime = 0;
+    static  inline double tNow, startTimeEvent;
+    static inline int rateGraphCounter = 0;
+    static inline int nStrips = 0;
 
-    Int_t eventCount = 0, oldEvents = 0, nEvents = 0;
-    Int_t type = 0;
+    static inline Int_t eventCount = 0, oldEvents = 0, nEvents = 0;
+    static inline Int_t type = 0;
 
-    TH1* pulses;
-    TH1I* spectrum;
-    TH2I* hitmap;
-    TRootEmbeddedCanvas* fECanvas;
+    static inline TH1* pulses = nullptr;
+    static inline TH1I* spectrum = nullptr;
+    static inline TH2I* hitmap = nullptr;
+    static inline TRootEmbeddedCanvas* fECanvas = nullptr;
 
-    TGraph *meanRateGraph, *instantRateGraph;
-    std::vector<TGraph*> pulsesGraph;
+    static inline TGraph *meanRateGraph = nullptr, *instantRateGraph = nullptr;
+    static inline std::vector<TGraph*> pulsesGraph;
 
     pthread_t updateT, readerT;
 
@@ -103,42 +107,38 @@ class TRestDAQGUI {
     void cfgButtonDoubleClick(TGLVEntry* f, Int_t btn);
     void StopPressed();
     void StartUpPressed();
-    void UpdateParams();
+    static void UpdateParams();
     void UpdateInputs();
-    void UpdateOutputs();
+    static void UpdateOutputs();
     void UpdateCfg(const std::string& cN);
 
-    void SetRunningState();
-    void SetStoppedState();
-    void SetUnknownState();
+    static void SetRunningState();
+    static void SetStoppedState();
+    static void SetUnknownState();
 
-    void READ();
-    void AnalyzeEvent(TRestRawSignalEvent* fEvent, double& oldTimeUpdate);
-    void UpdateRate(const double& currentTimeEv, double& oldTimeEv, const int& currentEventCount, int& oldEventCount);
+    static void READ();
+    static void AnalyzeEvent(TRestRawSignalEvent* fEvent, double& oldTimeUpdate);
+    static void UpdateRate(const double& currentTimeEv, double& oldTimeEv, const int& currentEventCount, int& oldEventCount);
 
-    bool GetDAQManagerParams(double &lastTimeUpdate);
+    static bool GetDAQManagerParams(double &lastTimeUpdate);
 
     static void* UpdateThread(void* arg);
     static void* ReaderThread(void* arg);
     const std::string lastSetFile = "DAQLastSettings.txt";
     static std::atomic<bool> exitGUI;
 
-    const std::vector<double> initPX() {
+    static inline const std::vector<double> initPX() {
         std::vector<double> v(512);
         for (int i = 0; i < v.size(); i++) v[i] = i;
         return v;
     }
-    const std::vector<double> pX = initPX();
 
-    std::map<int, int> decoding;
+    static inline const std::vector<double> pX = initPX();
+
+    static inline std::map<int, int> decoding;
 
     void LoadDecodingFile(const std::string& decodingFile);
-    void FillHitmap(const std::map<int, int>& hmap);
-
-    const int PLOTS_UPDATE_TIME = 5;//Seconds to update the plots
-    const int SLEEP_TIME = 500;//Miliseconds to sleep
-    const int N_SIGMA_THRESHOLD = 5;//Sigma threshold to apply to the pulses to take into accout in the writting
-    const int MIN_FILE_SIZE = 15*1024;//Minimum file size for a file to be opened
+    static void FillHitmap(const std::map<int, int>& hmap);
 
     ClassDef(TRestDAQGUI, 1)
 };
