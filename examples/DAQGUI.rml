@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+
+<TRestManager>
+
+    <TRestDAQGUIMetadata name="GUI Metadata" title="GUI Metadata" verboseLevel="info">
+	<parameter name="baseLineRange" value="(50,120)"/>
+        <parameter name="signalThreshold" value="2.0"/>
+        <parameter name="binsSpectra" value="1000"/>
+        <parameter name="spectraMax" value="100000"/>
+        <parameter name="minFileSize" value="15360"/>
+        <parameter name="readoutFile" value="DummyReadout.root"/>
+        <parameter name="readoutName" value="dummy"/>
+    </TRestDAQGUIMetadata>
+
+</TRestManager>
