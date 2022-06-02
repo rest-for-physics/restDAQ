@@ -21,7 +21,7 @@
 #include <TGTextEntry.h>
 #include <TGraph.h>
 #include <TH1.h>
-#include <TH2.h>
+#include <TH2Poly.h>
 #include <TObject.h>
 #include <TPaveText.h>
 #include <TRootEmbeddedCanvas.h>
@@ -31,17 +31,20 @@
 #include <TTimeStamp.h>
 #include <TTree.h>
 #include <TVirtualX.h>
-#include <pthread.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 
 #include "TRestRawSignalEvent.h"
+#include "TRestDAQGUIMetadata.h"
+#ifdef REST_DetectorLib
+#include "TRestDetectorReadout.h"
+#endif
+
 
 constexpr int PLOTS_UPDATE_TIME = 5;//Seconds to update the plots
 constexpr int SLEEP_TIME = 500;//Miliseconds to sleep
-constexpr int N_SIGMA_THRESHOLD = 5;//Sigma threshold to apply to the pulses to take into accout in the writting
-constexpr int MIN_FILE_SIZE = 15*1024;//Minimum file size for a file to be opened
 
 class TRestDAQGUI {
    public:
@@ -54,33 +57,33 @@ class TRestDAQGUI {
 
     static inline TGComboBox* typeCombo;
 
+    static inline TRestDAQGUIMetadata *guiMetadata;
+
     TGFileContainer* fContents;
     TGTransientFrame* cfgMain;
     TGTransientFrame* startUpMain;
 
     std::string cfgFileName = "none";
     static inline std::string runN = "none";
-    static inline int status = -1;
 
     static inline double oldTime = 0;
-    static  inline double tNow, startTimeEvent;
+    static inline double tNow, startTimeEvent;
     static inline int rateGraphCounter = 0;
-    static inline int nStrips = 0;
 
     static inline Int_t eventCount = 0, oldEvents = 0, nEvents = 0;
     static inline Int_t type = 0;
 
     static inline TH1* pulses = nullptr;
     static inline TH1I* spectrum = nullptr;
-    static inline TH2I* hitmap = nullptr;
+    static inline TH2Poly* hitmap = nullptr;
     static inline TRootEmbeddedCanvas* fECanvas = nullptr;
 
     static inline TGraph *meanRateGraph = nullptr, *instantRateGraph = nullptr;
     static inline std::vector<TGraph*> pulsesGraph;
 
-    pthread_t updateT, readerT;
+    std::thread updateT, readerT;
 
-    TRestDAQGUI(const int& p, const int& q, std::string decodingFile = "");
+    TRestDAQGUI(const int& p, const int& q, TRestDAQGUIMetadata *mt);
     ~TRestDAQGUI();  // need to delete here created widgets
 
     void SetInputs();
@@ -122,23 +125,15 @@ class TRestDAQGUI {
 
     static bool GetDAQManagerParams(double &lastTimeUpdate);
 
-    static void* UpdateThread(void* arg);
-    static void* ReaderThread(void* arg);
     const std::string lastSetFile = "DAQLastSettings.txt";
     static std::atomic<bool> exitGUI;
+    static std::atomic<int> status;
 
-    static inline const std::vector<double> initPX() {
-        std::vector<double> v(512);
-        for (int i = 0; i < v.size(); i++) v[i] = i;
-        return v;
-    }
-
-    static inline const std::vector<double> pX = initPX();
-
-    static inline std::map<int, int> decoding;
-
-    void LoadDecodingFile(const std::string& decodingFile);
     static void FillHitmap(const std::map<int, int>& hmap);
+
+    #ifdef REST_DetectorLib
+    static inline TRestDetectorReadout* fReadout = nullptr;
+    #endif
 
     ClassDef(TRestDAQGUI, 1)
 };

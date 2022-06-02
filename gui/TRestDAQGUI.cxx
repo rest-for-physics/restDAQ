@@ -1,23 +1,27 @@
 
-#include "TRestDAQGUI.h"
-
 #include <iostream>
-
-#include "TRESTDAQManager.h"
 #include "TGMsgBox.h"
+
+#include "TRestDAQGUI.h"
+#include "TRESTDAQManager.h"
 
 ClassImp(TRestDAQGUI);
 
 std::atomic<bool> TRestDAQGUI::exitGUI(false);
+std::atomic<int> TRestDAQGUI::status(-1);
 
-TRestDAQGUI::TRestDAQGUI(const int& p, const int& q, std::string decodingFile) {
+
+TRestDAQGUI::TRestDAQGUI(const int& p, const int& q, TRestDAQGUIMetadata *mt) {
     fMain = new TGMainFrame(gClient->GetRoot(), p, q, kHorizontalFrame);
 
     fMain->SetCleanup(kDeepCleanup);
 
+    guiMetadata = mt;
+    
+    if(guiMetadata==nullptr) guiMetadata = new TRestDAQGUIMetadata();
+    
     LoadLastSettings();
     UpdateInputs();
-    LoadDecodingFile(decodingFile);
 
     fVLeft = new TGVerticalFrame(fMain, 100, 200, kLHintsLeft);
     std::cout << "Vertical frame" << std::endl;
@@ -34,10 +38,13 @@ TRestDAQGUI::TRestDAQGUI(const int& p, const int& q, std::string decodingFile) {
     fECanvas->GetCanvas()->Divide(2, 2);
     fMain->AddFrame(fECanvas, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY, 10, 10, 10, 1));
 
+    fECanvas->GetCanvas()->cd(1);
     meanRateGraph = new TGraph();
     meanRateGraph->SetLineColor(kBlue);
     meanRateGraph->SetMarkerColor(kBlue);
     meanRateGraph->SetMarkerStyle(20);
+
+    tNow = TRESTDAQ::getCurrentTime();
 
     instantRateGraph = new TGraph();
     instantRateGraph->GetXaxis()->SetTimeDisplay(1);
@@ -50,28 +57,41 @@ TRestDAQGUI::TRestDAQGUI(const int& p, const int& q, std::string decodingFile) {
     instantRateGraph->SetMarkerColor(kRed);
     instantRateGraph->SetMarkerStyle(22);
     instantRateGraph->SetPoint(0, tNow, 0);
-    fECanvas->GetCanvas()->cd(1);
     instantRateGraph->Draw();
 
-    spectrum = new TH1I("Spectra", "Spectra", 1000, 0, 100000);
+    fECanvas->GetCanvas()->cd(2);
+    spectrum = new TH1I("Spectra", "Spectra", guiMetadata->GetBinsSpectra(), 0, guiMetadata->GetSpetraMax());
     spectrum->GetXaxis()->SetTitle("Amplitude");
     spectrum->GetYaxis()->SetTitle("Counts");
-    fECanvas->GetCanvas()->cd(2);
     spectrum->Draw();
 
     fECanvas->GetCanvas()->cd(3);
-    pulses = fECanvas->GetCanvas()->DrawFrame(0, 0, 512, 4000);
+    pulses = fECanvas->GetCanvas()->DrawFrame(0, 0, 512, 4100);
     pulses->SetTitle("Pulses");
     pulses->GetXaxis()->SetTitle("TimeBin");
     pulses->GetYaxis()->SetTitle("ADC");
 
-    fECanvas->GetCanvas()->cd(4);
-    if (nStrips)
-        hitmap = new TH2I("HitMap", "HitMap", (nStrips / 2) / +1, 0, nStrips, (nStrips / 2) + 1, 0, nStrips);
-    else
-        hitmap = new TH2I();
+    hitmap = new TH2Poly("Hitmap empty", "Hitmap empty",0,1,0,1);
+    #ifdef REST_DetectorLib
+      TFile *file = TFile::Open(guiMetadata->GetReadoutFile());
+        if(file == nullptr || file->IsZombie() ) {
+          std::cout<<"Not valid file "<<guiMetadata->GetReadoutFile()<<std::endl;
+        } else if (file->GetKey(guiMetadata->GetReadoutName()) == nullptr ) {
+          std::cout<<"Key "<< guiMetadata->GetReadoutName()<<" not found "<<std::endl;
+          file->Close();
+        } else {
+          fReadout = (TRestDetectorReadout *)file->Get(guiMetadata->GetReadoutName());
+            if(fReadout){
+              fReadout->PrintMetadata();
+              TRestDetectorReadoutPlane* plane = &(*fReadout)[0];
+              hitmap = plane->GetReadoutHistogram();
+            }
+          file->Close();
+        }
+    #endif
 
-    hitmap->Draw("COLZ");
+    fECanvas->GetCanvas()->cd(4);
+    hitmap->Draw("COLZ0");
 
     fECanvas->GetCanvas()->Update();
 
@@ -84,37 +104,21 @@ TRestDAQGUI::TRestDAQGUI(const int& p, const int& q, std::string decodingFile) {
 
     tNow = TRESTDAQ::getCurrentTime();
 
-    pthread_create(&updateT, NULL, UpdateThread, NULL);
-    pthread_create(&readerT, NULL, ReaderThread, NULL);
+    /// Launch threads
+    updateT = std::thread(UpdateParams);
+    readerT = std::thread(READ);
 }
 
 TRestDAQGUI::~TRestDAQGUI() {
     exitGUI = true;
-    pthread_join(updateT, NULL);
-    pthread_join(readerT, NULL);
+    updateT.join();
+    readerT.join();
 
     if (cfgFileName != "none") SaveLastSettings();
     fMain->Cleanup();
     std::cout << "Destroying" << std::endl;
     gApplication->Terminate(0);
     delete fMain;
-}
-
-void TRestDAQGUI::LoadDecodingFile(const std::string& decodingFile) {
-    std::ifstream dec(decodingFile);
-    if (!dec.is_open()) return;
-    std::string line;
-
-    while (getline(dec, line)) {
-        std::istringstream ss(line);
-        int id, chan;
-        if (ss >> id >> chan) decoding[id] = chan;
-        if (chan > nStrips) nStrips = chan;
-        // std::cout<<id<<" "<<chan<<std::endl;
-    }
-    nStrips++;
-    nStrips /= 2;
-    std::cout << "NStrips " << nStrips << std::endl;
 }
 
 void TRestDAQGUI::SetInputs() {
@@ -282,13 +286,15 @@ void TRestDAQGUI::StartPressed() {
     }
     type = typeCombo->GetSelected();
     for (const auto& [name, t] : daq_metadata_types::acqTypes_map) {
-        if (type == (int)t) {
+        if (type == static_cast<int>(t)) {
+            std::cout<<name<<std::endl;
             sprintf(mem->runType, name.c_str());
             break;
         }
     }
 
     cfgFileName = cfgName->GetText();
+    std::cout<<cfgFileName<<std::endl;
     sprintf(mem->cfgFile, cfgFileName.c_str());
 
     nEvents = std::atoi(nEventsEntry->GetText());
@@ -337,6 +343,7 @@ void TRestDAQGUI::StartUpPressed() {
         }
 
       cfgFileName = cfgName->GetText();
+      std::cout<<cfgFileName<<std::endl;
       sprintf(mem->cfgFile, cfgFileName.c_str());
       mem->startUp = 1;
       TRESTDAQManager::DetachSharedMemory(&mem);
@@ -535,12 +542,6 @@ bool TRestDAQGUI::GetDAQManagerParams(double &lastTimeUpdate) {
     return true;
 }
 
-void* TRestDAQGUI::UpdateThread(void* arg) {
-    //TRestDAQGUI* inst = (TRestDAQGUI*)arg;
-    UpdateParams();
-    return NULL;
-}
-
 void TRestDAQGUI::UpdateParams() {
 
   double lastTimeUpdate = 0;
@@ -569,12 +570,6 @@ void TRestDAQGUI::UpdateParams() {
     std::cout << "Exiting update thread " << std::endl;
 }
 
-void* TRestDAQGUI::ReaderThread(void* arg) {
-    //TRestDAQGUI* inst = (TRestDAQGUI*)arg;
-    READ();
-    return NULL;
-}
-
 void TRestDAQGUI::READ() {
 
     while (!exitGUI) {
@@ -583,7 +578,7 @@ void TRestDAQGUI::READ() {
 
         if (status == 1) {
             int fSize = TRESTDAQManager::GetFileSize(runN);
-            if(fSize < MIN_FILE_SIZE)continue;//Wait till filesize is big enough
+            if(fSize < guiMetadata->GetMinFileSize() )continue;//Wait till filesize is big enough
 
             TFile f(runN.c_str());
             if (f.IsZombie()) continue;
@@ -592,7 +587,7 @@ void TRestDAQGUI::READ() {
             spectrum->Clear();
             spectrum->Reset();
             hitmap->Clear();
-            hitmap->Reset();
+            hitmap->Reset("");
             instantRateGraph->Set(0);
             instantRateGraph->SetPoint(0, tNow, 0);
             meanRateGraph->Set(0);
@@ -621,8 +616,8 @@ void TRestDAQGUI::READ() {
                     AnalyzeEvent(fEvent, timeUpdate);
                     i++;
                 }
+                std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME) );
                 tree->Refresh();
-                std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME));
             }
             f.Close();
         }
@@ -652,52 +647,32 @@ void TRestDAQGUI::UpdateRate(const double& currentTimeEv, double& oldTimeEv, con
 
 void TRestDAQGUI::AnalyzeEvent(TRestRawSignalEvent* fEvent, double& oldTimeUpdate) {
 
-    bool updatePlots = tNow > (oldTimeUpdate + PLOTS_UPDATE_TIME);
+    bool updatePlots = tNow > (oldTimeUpdate + PLOTS_UPDATE_TIME );
 
     if (updatePlots) {
-        for (auto p : pulsesGraph) delete p;
         pulsesGraph.clear();
     }
 
-    std::vector<double> pY(512);
-
     int evAmplitude = 0;
     std::map<int, int> hmap;
+    int color =1;
     for (int s = 0; s < fEvent->GetNumberOfSignals(); s++) {
         TRestRawSignal* signal = fEvent->GetSignal(s);
-        int max = 0;
-        double baseLine = 0, baseLineSigma = 0;
-        int nPoints = 0;
-        for (int i = 0; i < signal->GetNumberOfPoints(); i++) {
-            int val = signal->GetData(i);
-            if (val > max) max = val;
-            pY[i] = val;
+        const double max = signal->GetAmplitudeFast(TVector2(guiMetadata->GetBaselineRange()), guiMetadata->GetSignalThreshold());
 
-            if (i > 100 || val == 0) continue;
-            baseLine += val;
-            baseLineSigma += val * val;
-            nPoints++;
-        }
+        if(max<=0)continue;
 
-        if (nPoints > 0) {
-            baseLine /= nPoints;
-            baseLineSigma = TMath::Sqrt(baseLineSigma / nPoints - baseLine * baseLine);
-        }
+        evAmplitude +=max;
+        hmap[signal->GetID()] = max;
 
-        if (max > baseLine + N_SIGMA_THRESHOLD * baseLineSigma) {  // Only pulses above certain threshold
-            max -= baseLine;
-            evAmplitude += max;
-            hmap[signal->GetID()] = max;
-            if (updatePlots) {
-                TGraph* gr = new TGraph(signal->GetNumberOfPoints(), &(pX[0]), &(pY[0]));
-                pulsesGraph.emplace_back(gr);
-            }
-        }
+          if (updatePlots) 
+            pulsesGraph.emplace_back( signal->GetGraph(color));
+        color++;
     }
 
-    if (!decoding.empty() && !hmap.empty() && evAmplitude > 0) FillHitmap(hmap);
+    if (!hmap.empty() && evAmplitude > 0) FillHitmap(hmap);
 
-    spectrum->Fill(evAmplitude);
+    if(evAmplitude > 0)spectrum->Fill(evAmplitude);
 
     if (updatePlots) {
         if (meanRateGraph->GetN() > 0 && instantRateGraph->GetN() > 0) {
@@ -709,18 +684,17 @@ void TRestDAQGUI::AnalyzeEvent(TRestRawSignalEvent* fEvent, double& oldTimeUpdat
         fECanvas->GetCanvas()->cd(2);
         spectrum->Draw();
 
-        int color = 1;
         fECanvas->GetCanvas()->cd(3);
         for (auto gr : pulsesGraph) {
-            gr->SetLineColor(color);
             gr->Draw("SAME");
-            color++;
         }
 
-        if (!decoding.empty()) {
+        #ifdef REST_DetectorLib
+          if(fReadout){
             fECanvas->GetCanvas()->cd(4);
-            hitmap->Draw("COLZ");
-        }
+            hitmap->Draw("COLZ0");
+          }
+        #endif
 
         fECanvas->GetCanvas()->Update();
         oldTimeUpdate = tNow;
@@ -728,17 +702,24 @@ void TRestDAQGUI::AnalyzeEvent(TRestRawSignalEvent* fEvent, double& oldTimeUpdat
 }
 
 void TRestDAQGUI::FillHitmap(const std::map<int, int>& hmap) {
+    #ifdef REST_DetectorLib
+    if(!fReadout)return;
+
     double posX = 0, posY = 0;
     int ampX = 0, ampY = 0;
+    Int_t readoutChannel = -1, readoutModule, planeID=0;
+    TRestDetectorReadoutPlane* plane = &(*fReadout)[0];
     for (const auto& [sID, ampl] : hmap) {
-        if (decoding.find(sID) == decoding.end()) continue;
-        int channel = decoding[sID] % (nStrips * 2);
-        int rChannel = channel % nStrips;
-        if (channel / nStrips == 0) {
-            posX += ampl * rChannel;
+      fReadout->GetPlaneModuleChannel(sID, planeID, readoutModule, readoutChannel);
+        if (readoutChannel==-1) continue;
+        Double_t x = plane->GetX(readoutModule, readoutChannel);
+        Double_t y = plane->GetY(readoutModule, readoutChannel);
+
+        if ( TMath::IsNaN(y) ) {
+            posX += ampl * x;
             ampX += ampl;
-        } else {
-            posY += ampl * rChannel;
+        } else if ( TMath::IsNaN(x) ) {
+            posY += ampl * y;
             ampY += ampl;
         }
     }
@@ -748,4 +729,5 @@ void TRestDAQGUI::FillHitmap(const std::map<int, int>& hmap) {
     posX /= ampX;
     posY /= ampY;
     hitmap->Fill(posX, posY);
+    #endif
 }
