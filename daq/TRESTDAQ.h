@@ -32,9 +32,11 @@ class TRESTDAQ {
     virtual void initialize() = 0;
     virtual void startUp(){};
 
-    inline static bool abrt = false;
-    inline static int event_cnt = 0;
-    inline static TRestStringOutput::REST_Verbose_Level verboseLevel = TRestStringOutput::REST_Verbose_Level::REST_Info;
+    static std::atomic<bool> abrt;
+    static std::atomic<int> event_cnt;
+    static inline double lastEvTime = 0;
+
+    static inline TRestStringOutput::REST_Verbose_Level verboseLevel = TRestStringOutput::REST_Verbose_Level::REST_Info;
 
     static Double_t getCurrentTime();
 

@@ -14,7 +14,6 @@ Based on mclient program from Denis Calvet
 
 #include "TRESTDAQ.h"
 #include "TRESTDAQSocket.h"
-#include "RingBuffer.h"
 
 #include <iostream>
 #include <thread>

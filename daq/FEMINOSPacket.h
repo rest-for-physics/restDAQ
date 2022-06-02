@@ -157,7 +157,6 @@
 
 #define CURRENT_FRAMING_VERSION 0
 
-#include "RingBuffer.h"
 #include "TRestRawSignalEvent.h"
 
 #include <deque>
