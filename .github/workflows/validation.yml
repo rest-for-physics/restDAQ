@@ -22,7 +22,7 @@ jobs:
       image: ghcr.io/lobis/root-geant4-garfield:rest-for-physics
 
   strategy:
-
+    fail-fast: false
   steps:
     - name: Print env
         run: |
