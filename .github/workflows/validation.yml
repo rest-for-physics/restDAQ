@@ -1,0 +1,57 @@
+name: Validation
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "master" branch
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+  releases:
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/lobis/root-geant4-garfield:rest-for-physics
+
+    strategy:
+      matrix:
+        branch-name: [${GITHUB_REF##*/} , master ]
+      
+    steps:
+    - name: Print env
+        run: |
+          echo github.event.action: ${{ github.event.action }}
+          echo github.event_name: ${{ github.event_name }}
+    - name: Versioning
+        run: |
+          cmake --version
+          gcc --version
+          root-config --version
+    - name: Checkout REST Framework
+        uses: actions/checkout@v2
+        with:
+          repository: rest-for-physics/framework
+          ref: ${{ matrix.branch-name }}
+          path: framework
+    - name: Pull submodules
+        run: |
+          cd framework
+          python3 pull-submodules.py --force --dontask --latest:${{ matrix.branch-name }}
+    - name: Configure
+        shell: bash
+        run: |
+          mkdir build
+          mkdir install
+          cmake -B build -DCMAKE_INSTALL_PREFIX=install/ -DREST_ALL_LIBS=ON -DREST_G4=OFF -DREST_GARFIELD=OFF -DREST_DAQ=ON
+    - name: Build
+       run: |
+         cmake --build build/ -j4 install
+
