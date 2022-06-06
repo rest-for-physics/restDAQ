@@ -22,6 +22,8 @@ jobs:
       image: ghcr.io/lobis/root-geant4-garfield:rest-for-physics
     strategy:
       fail-fast: false
+      matrix:
+        branch: [ ${GITHUB_REF##*/}, master ]
     steps:
      - name: Print env
        run: |
@@ -36,11 +38,11 @@ jobs:
        uses: actions/checkout@v2
        with:
           repository: rest-for-physics/framework
+          ref: ${{ matrix.branch }}
           path: framework
      - name: Pull submodules
        run: |
           cd framework
-          git checkout ${GITHUB_REF##*/}
           python3 pull-submodules.py --force --dontask --latest:${GITHUB_REF##*/}
      - name: Configure
        shell: bash
