@@ -7,7 +7,7 @@ on:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
-  releases:
+  release:
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -25,31 +25,30 @@ jobs:
     fail-fast: false
   steps:
     - name: Print env
-        run: |
+      run: |
           echo github.event.action: ${{ github.event.action }}
           echo github.event_name: ${{ github.event_name }}
     - name: Versioning
-        run: |
+      run: |
           cmake --version
           gcc --version
           root-config --version
     - name: Checkout REST Framework
-        uses: actions/checkout@v2
-        with:
+      uses: actions/checkout@v2
+      with:
           repository: rest-for-physics/framework
           path: framework
     - name: Pull submodules
-        run: |
+      run: |
           cd framework
           git checkout ${GITHUB_REF##*/}
           python3 pull-submodules.py --force --dontask --latest:${GITHUB_REF##*/}
     - name: Configure
-        shell: bash
-        run: |
+      shell: bash
+      run: |
           mkdir build
           mkdir install
           cmake -B build -DCMAKE_INSTALL_PREFIX=install/ -DREST_ALL_LIBS=ON -DREST_G4=OFF -DREST_GARFIELD=OFF -DREST_DAQ=ON
     - name: Build
-       run: |
+      run: |
          cmake --build build/ -j4 install
-
