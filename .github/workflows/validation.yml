@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        branch: [ ${GITHUB_REF##*/}, master ]
+        branch: [ "${GITHUB_REF##*/}", master ]
     steps:
      - name: Print env
        run: |
