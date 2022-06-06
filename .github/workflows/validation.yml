@@ -20,35 +20,34 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/lobis/root-geant4-garfield:rest-for-physics
-
-  strategy:
-    fail-fast: false
-  steps:
-    - name: Print env
-      run: |
+    strategy:
+      fail-fast: false
+    steps:
+     - name: Print env
+       run: |
           echo github.event.action: ${{ github.event.action }}
           echo github.event_name: ${{ github.event_name }}
-    - name: Versioning
-      run: |
+     - name: Versioning
+       run: |
           cmake --version
           gcc --version
           root-config --version
-    - name: Checkout REST Framework
-      uses: actions/checkout@v2
-      with:
+     - name: Checkout REST Framework
+       uses: actions/checkout@v2
+       with:
           repository: rest-for-physics/framework
           path: framework
-    - name: Pull submodules
-      run: |
+     - name: Pull submodules
+       run: |
           cd framework
           git checkout ${GITHUB_REF##*/}
           python3 pull-submodules.py --force --dontask --latest:${GITHUB_REF##*/}
-    - name: Configure
-      shell: bash
-      run: |
+     - name: Configure
+       shell: bash
+       run: |
           mkdir build
           mkdir install
           cmake -B build -DCMAKE_INSTALL_PREFIX=install/ -DREST_ALL_LIBS=ON -DREST_G4=OFF -DREST_GARFIELD=OFF -DREST_DAQ=ON
-    - name: Build
-      run: |
+     - name: Build
+       run: |
          cmake --build build/ -j4 install
