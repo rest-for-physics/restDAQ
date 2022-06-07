@@ -1,4 +1,10 @@
 # restDAQ
+[![DOI](https://zenodo.org/badge/324291710.svg)](http://doi.org/10.5281/zenodo.4528985)
+[![pipeline status](https://gitlab.cern.ch/rest-for-physics/legacylib/badges/master/pipeline.svg)](https://gitlab.cern.ch/rest-for-physics/restDAQ/-/commits/master)
+[![website](https://img.shields.io/badge/user-guide-E8B6FF.svg)](https://rest-for-physics.github.io)
+[![api](https://img.shields.io/badge/user-API-FFCA78.svg)](https://sultan.unizar.es/rest/)
+[![forum](https://img.shields.io/badge/user-forum-AAFF90.svg)](https://rest-forum.unizar.es/)
+
 Generic Data AcQuisition Software for REST, which also provides a Graphical User Interface (GUI) to visualize and control the data acquisition.
 
 The DAQ core software is under the `daq` folder, currently only DCC and dummy (random data generator) electronics are supported. The acquisition is launched via `restDAQManager` program, which can be controlled via shared memory. Standard operation mode is to launch `restDAQManager` without any argument, it will start the shared memory and wait for the acquitition to be started. Afterwards, the data acquisition can be launched using `REST_DAQGUI.C` macro (see below for more details). Some parameters, such as: configuration file, number of events or run type can be controlled via shared memory. Moreover, it is possible to launch the data acquisition via command line using `restDAQManager --c myDAQCfgFile.rml`. However, `restDAQManager` will exit once the data acquisition is stopped. Further options are provided to stop de on-going run `restDAQManager --s` or exit the DAQ Manager `restDAQManager --e`. Since the `restDAQManager` is using shared memory only one instance of `restDAQManager` is allowed. The data is stored in a root file using `TRestRawSignalEvent` event format. Moreover, some `TRestRawDAQMetadata` is stored to track the DAQ parameters used in a particular run.
