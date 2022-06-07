@@ -22,34 +22,58 @@ jobs:
       image: ghcr.io/lobis/root-geant4-garfield:rest-for-physics
     strategy:
       fail-fast: false
-      matrix:
-        branch: [ ${GITHUB_REF##*/}, master ]
     steps:
+     - name: Get branch name (merge)
+       if: github.event_name != 'pull_request'
+       shell: bash
+       run: echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV
+     - name: Get branch name (pull request)
+       if: github.event_name == 'pull_request'
+       shell: bash
+       run: echo "BRANCH_NAME=$(echo ${GITHUB_HEAD_REF} | tr / -)" >> $GITHUB_ENV
      - name: Print env
        run: |
           echo github.event.action: ${{ github.event.action }}
           echo github.event_name: ${{ github.event_name }}
+          echo github.branch:  ${{ env.BRANCH_NAME }}
      - name: Versioning
        run: |
           cmake --version
           gcc --version
           root-config --version
      - name: Checkout REST Framework
-       uses: actions/checkout@v2
+       uses: actions/checkout@v3
        with:
           repository: rest-for-physics/framework
-          ref: ${{ matrix.branch }}
           path: framework
+          ref: master
+     - name: Checkout framework branch
+       shell: bash
+       run: |
+          cd framework
+          var=$(git ls-remote --heads origin ${{ env.BRANCH_NAME }})
+          if [ -z $var ]; then
+            git pull
+          else 
+            git checkout ${{ env.BRANCH_NAME }}
+            git pull
+          fi
      - name: Pull submodules
        run: |
           cd framework
-          python3 pull-submodules.py --force --dontask --latest:${GITHUB_REF##*/}
+          python3 pull-submodules.py --force --dontask --latest:${{ env.BRANCH_NAME }}
      - name: Configure
-       shell: bash
        run: |
           mkdir build
           mkdir install
-          cmake -B build -DCMAKE_INSTALL_PREFIX=install/ -DREST_ALL_LIBS=ON -DREST_G4=OFF -DREST_GARFIELD=OFF -DREST_DAQ=ON
-     - name: Build
+          cmake framework -B build -DCMAKE_INSTALL_PREFIX=install/ -DRESTLIB_DETECTOR=ON -DREST_G4=OFF -DREST_GARFIELD=OFF -DREST_DAQ=ON
+     - name: Build and install
        run: |
-         cmake --build build/ -j4 install
+         cd build
+         make -j4 install 
+     - name: Upload Artifacts
+       uses: actions/upload-artifact@v3
+       with: 
+         name: rest-intall
+         path: install
+         retention-days: 2
