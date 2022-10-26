@@ -13,7 +13,7 @@
 using namespace std;
 namespace fs = std::filesystem;
 
-constexpr char* thisProgram = "restDAQManager";
+constexpr char* thisProgram = "restDAQ";
 
 void signal_handler(int signum) {
     cout << "Signal handler for '" << signum << "'" << endl;

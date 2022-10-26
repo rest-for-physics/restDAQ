@@ -292,7 +292,7 @@ void TRestDAQGUI::StartPressed() {
 
     cfgFileName = cfgName->GetText();
     std::cout << cfgFileName << std::endl;
-    sprintf(mem->cfgFile, cfgFileName.c_str());
+    sprintf(mem->cfgFile, "%s", cfgFileName.c_str());
 
     nEvents = std::atoi(nEventsEntry->GetText());
     mem->nEvents = nEvents;
@@ -339,7 +339,7 @@ void TRestDAQGUI::StartUpPressed() {
 
         cfgFileName = cfgName->GetText();
         std::cout << cfgFileName << std::endl;
-        sprintf(mem->cfgFile, cfgFileName.c_str());
+        sprintf(mem->cfgFile, "%s", cfgFileName.c_str());
         mem->startUp = 1;
         TRESTDAQManager::DetachSharedMemory(&mem);
     }

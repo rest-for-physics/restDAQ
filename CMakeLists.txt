@@ -70,23 +70,18 @@ add_executable(${EXECUTABLE_NAME} main.cxx)
 target_link_libraries(${EXECUTABLE_NAME} PUBLIC RESTDAQ RestDAQGUI ${LINK_LIBRARIES} ${ROOT_LIBRARIES} RestRaw PRIVATE CLI11::CLI11)
 target_include_directories(${EXECUTABLE_NAME} SYSTEM PUBLIC ${INCLUDE_DIRS})
 
-message(STATUS "include directories: ${INCLUDE_DIRS}")
-
-#----------------------------------------------------------------------------
-# Copy restDAQManager to the install directory
 install(TARGETS ${EXECUTABLE_NAME} DESTINATION bin)
-
-#----------------------------------------------------------------------------
-# Copy macros to the install directory
-file(GLOB_RECURSE MAC "${CMAKE_CURRENT_SOURCE_DIR}/macros/*")
-INSTALL(FILES ${MAC} DESTINATION ./macros/daq)
-
-#----------------------------------------------------------------------------
-# Install the executable to 'bin' directory under CMAKE_INSTALL_PREFIX
-#
-#install(TARGETS ${PROJECT_NAME} DESTINATION bin)
 
 if (NOT ${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME})
     set(package_added "${PROJECT_NAME}")
     set(package_added ${package_added} PARENT_SCOPE)
 endif ()
+
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/examples
+        DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
+        )
+
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/examples/
+        DESTINATION examples
+        COMPONENT install
+        )
