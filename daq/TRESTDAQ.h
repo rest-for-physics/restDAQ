@@ -15,10 +15,10 @@ To implement generic methods here
 #include <iostream>
 #include <string>
 
+#include "TRESTDAQException.h"
 #include "TRestRawDAQMetadata.h"
 #include "TRestRawSignalEvent.h"
 #include "TRestRun.h"
-#include "TRESTDAQException.h"
 
 class TRESTDAQ {
    public:
@@ -43,7 +43,7 @@ class TRESTDAQ {
     TRestRun* GetRestRun() { return restRun; }
     TRestRawSignalEvent* GetSignalEvent() { return fSignalEvent; }
     TRestRawDAQMetadata* GetDAQMetadata() { return daqMetadata; }
-    static void FillTree(TRestRun *rR, TRestRawSignalEvent* sEvent);
+    static void FillTree(TRestRun* rR, TRestRawSignalEvent* sEvent);
 
    private:
     TRestRun* restRun;

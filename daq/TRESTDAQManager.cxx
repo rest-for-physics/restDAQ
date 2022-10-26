@@ -9,6 +9,8 @@ Control data acquisition via shared memory, should be always running
 
 #include "TRESTDAQManager.h"
 
+#include <sys/stat.h>
+
 #include <chrono>
 #include <thread>
 
@@ -37,11 +39,10 @@ TRESTDAQManager::~TRESTDAQManager() {
 }
 
 void TRESTDAQManager::startUp() {
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
 
-  std::cout<<__PRETTY_FUNCTION__<<std::endl;
-
-  int shmid;
-  sharedMemoryStruct* sM;
+    int shmid;
+    sharedMemoryStruct* sM;
     if (!GetSharedMemory(shmid, &sM)) return;
 
     if (!TRestTools::fileExists(sM->cfgFile)) {
@@ -50,36 +51,34 @@ void TRESTDAQManager::startUp() {
         return;
     }
 
-  TRestRawDAQMetadata daqMetadata(sM->cfgFile);
+    TRestRawDAQMetadata daqMetadata(sM->cfgFile);
 
-  sM->status = 1;
-  DetachSharedMemory(&sM);
+    sM->status = 1;
+    DetachSharedMemory(&sM);
 
-    try{
-      auto daq = GetTRESTDAQ(nullptr,&daqMetadata);
-      if(daq){ 
-        daq->startUp();
-        daq->stopDAQ();
-      }
-    } catch(const TRESTDAQException& e) {
-      std::cerr<<"TRESTDAQException was thrown: "<<e.what()<<std::endl;
+    try {
+        auto daq = GetTRESTDAQ(nullptr, &daqMetadata);
+        if (daq) {
+            daq->startUp();
+            daq->stopDAQ();
+        }
+    } catch (const TRESTDAQException& e) {
+        std::cerr << "TRESTDAQException was thrown: " << e.what() << std::endl;
     } catch (const std::exception& e) {
-        std::cerr<<"std::exception was thrown: "<<e.what()<<std::endl;
+        std::cerr << "std::exception was thrown: " << e.what() << std::endl;
     }
-
 }
 
-std::unique_ptr<TRESTDAQ> TRESTDAQManager::GetTRESTDAQ (TRestRun* rR, TRestRawDAQMetadata* dM){
+std::unique_ptr<TRESTDAQ> TRESTDAQManager::GetTRESTDAQ(TRestRun* rR, TRestRawDAQMetadata* dM) {
+    std::unique_ptr<TRESTDAQ> daq(nullptr);
 
-  std::unique_ptr<TRESTDAQ> daq(nullptr);
-
-  std::string electronicsType (dM->GetElectronicsType());
-  auto eT = daq_metadata_types::electronicsTypes_map.find(electronicsType);
+    std::string electronicsType(dM->GetElectronicsType());
+    auto eT = daq_metadata_types::electronicsTypes_map.find(electronicsType);
     if (eT == daq_metadata_types::electronicsTypes_map.end()) {
         std::cout << "Electronics type " << electronicsType << " not found, skipping " << std::endl;
         std::cout << "Valid electronics types:" << std::endl;
         for (const auto& [name, t] : daq_metadata_types::electronicsTypes_map) std::cout << (int)t << " " << name << std::endl;
-      return daq;
+        return daq;
     }
 
     if (eT->second == daq_metadata_types::electronicsTypes::DUMMY) {
@@ -92,8 +91,7 @@ std::unique_ptr<TRESTDAQ> TRESTDAQManager::GetTRESTDAQ (TRestRun* rR, TRestRawDA
         std::cout << electronicsType << " not implemented, skipping..." << std::endl;
     }
 
-return daq;
-
+    return daq;
 }
 
 void TRESTDAQManager::dataTaking() {
@@ -152,19 +150,19 @@ void TRESTDAQManager::dataTaking() {
 
     std::thread abrtT(AbortThread);
 
-    try{
-      auto daq = GetTRESTDAQ(&restRun,&daqMetadata);
-        if(daq){ 
-          TRESTDAQ::abrt = false;
-          daq->configure();
-          std::cout << "Electronics configured, starting data taking run type " << std::endl;
-          daq->startDAQ();  // Should wait till completion or stopped
-          daq->stopDAQ();
+    try {
+        auto daq = GetTRESTDAQ(&restRun, &daqMetadata);
+        if (daq) {
+            TRESTDAQ::abrt = false;
+            daq->configure();
+            std::cout << "Electronics configured, starting data taking run type " << std::endl;
+            daq->startDAQ();  // Should wait till completion or stopped
+            daq->stopDAQ();
         }
-    } catch(const TRESTDAQException& e) {
-      std::cerr<<"TRESTDAQException was thrown: "<<e.what()<<std::endl;
+    } catch (const TRESTDAQException& e) {
+        std::cerr << "TRESTDAQException was thrown: " << e.what() << std::endl;
     } catch (const std::exception& e) {
-        std::cerr<<"std::exception was thrown: "<<e.what()<<std::endl;
+        std::cerr << "std::exception was thrown: " << e.what() << std::endl;
     }
 
     StopRun();
@@ -204,12 +202,12 @@ void TRESTDAQManager::run() {
         if (!GetSharedMemory(shmid, &sharedMemory)) break;
         exitMan = sharedMemory->exitManager;
 
-        if(sharedMemory->startUp == 1){
-          DetachSharedMemory(&sharedMemory);
-          startUp();
-          if (!GetSharedMemory(shmid, &sharedMemory)) break;
-          sharedMemory->startUp = 0;
-          sharedMemory->status = 0;
+        if (sharedMemory->startUp == 1) {
+            DetachSharedMemory(&sharedMemory);
+            startUp();
+            if (!GetSharedMemory(shmid, &sharedMemory)) break;
+            sharedMemory->startUp = 0;
+            sharedMemory->status = 0;
         }
 
         if (sharedMemory->startDAQ == 1) {
@@ -232,7 +230,7 @@ void TRESTDAQManager::run() {
 
 bool TRESTDAQManager::GetSharedMemory(int& sid, sharedMemoryStruct** sM, int flag, bool verbose) {
     if ((sid = shmget(TRESTDAQManager::key, sizeof(sharedMemoryStruct), flag)) == -1) {
-        if(verbose)std::cerr << "Error while creating shared memory (shmget) " << std::strerror(errno) << std::endl;
+        if (verbose) std::cerr << "Error while creating shared memory (shmget) " << std::strerror(errno) << std::endl;
         return false;
     }
 
@@ -271,10 +269,10 @@ void TRESTDAQManager::InitializeSharedMemory(sharedMemoryStruct* sM) {
     sM->abortRun = 0;
 }
 
-int TRESTDAQManager::GetFileSize(const std::string &filename){
-  struct stat stat_buf;
-  int rc = stat(filename.c_str(), &stat_buf);
-  return rc == 0 ? stat_buf.st_size : -1;
+int TRESTDAQManager::GetFileSize(const std::string& filename) {
+    struct stat stat_buf;
+    int rc = stat(filename.c_str(), &stat_buf);
+    return rc == 0 ? stat_buf.st_size : -1;
 }
 
 void TRESTDAQManager::AbortThread() {

@@ -5,59 +5,65 @@ project(restDAQ)
 
 set(CMAKE_CXX_STANDARD 17)
 
+if (${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME})
+    # this will only be accessed when build restG4 as a standalone package, not when building the framework
+    message(STATUS "${PROJECT_NAME} standalone build")
+    CMAKE_MINIMUM_REQUIRED(VERSION 3.16)
+    find_package(REST REQUIRED)
+    string(FIND ${REST_LIBRARIES} "RestRaw" REST_RAW_FOUND)
+    if (${REST_RAW_FOUND} EQUAL -1)
+        message(SEND_ERROR "REST found but 'RestRaw' library is not present. Please install REST with RawLib")
+    endif ()
+endif ()
+
+message("-- Found REST version: ${REST_VERSION} with libraries: ${REST_LIBRARIES}")
+
 message("===============  ${PROJECT_NAME}  ==============")
 
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../../cmake ${CMAKE_MODULE_PATH})
 
 # Find ROOT
-find_package(ROOT REQUIRED COMPONENTS Gui)
+find_package(ROOT REQUIRED COMPONENTS Gui CONFIG)
 execute_process(COMMAND root-config --cflags OUTPUT_VARIABLE ROOT_CFLAGS)
 string(STRIP ${ROOT_CFLAGS} ROOT_CFLAGS)
 message("-- Found ROOT version: ${ROOT_VERSION} with compilation flags: ${ROOT_CFLAGS} and libraries: ${ROOT_LIBRARIES}")
 
 #Find REST
-IF(NOT DEFINED REST_PATH)
-        IF(DEFINED ENV{REST_PATH})
-                set(REST_PATH $ENV{REST_PATH})
-        ELSE()
-                message(FATAL_ERROR "ERROR ::: REST_PATH must be defined as an environment variable and point to REST install directory")
-                return()
-        ENDIF()
-ENDIF()
-set(CMAKE_INSTALL_PREFIX ${REST_PATH})
-message(STATUS "Using REST PATH: " ${REST_PATH})
+if (NOT DEFINED CMAKE_INSTALL_PREFIX)
+    set(CMAKE_INSTALL_PREFIX ${REST_PATH})
+endif ()
 
-message("-- Found REST version: ${REST_VERSION} with libraries: ${REST_LIBRARIES}")
+message(STATUS "Package ${PROJECT_NAME} will be installed in ${CMAKE_INSTALL_PREFIX}")
+
 # TODO: Implement a check for '-lRestRaw' in ${REST_LIBRARIES} (and exit if not found)
 # Still if we use -DREST_DAQ=ON at the framework compilation it will enable RawLib by default
 
-if (NOT CMAKE_CXX_FLAGS)
-    SET(CMAKE_CXX_FLAGS "-std=c++1y") # We should use the c++ flags from ${ROOT_CFLAGS}
-endif ()
-
 #-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 #Set include and lib
-if(DEFINED rest_include_dirs)
-	set(incdir ${PROJECT_SOURCE_DIR}/include ${ROOT_INCLUDE_DIRS} ${rest_include_dirs})
-else()
-	set(incdir ${PROJECT_SOURCE_DIR}/include ${ROOT_INCLUDE_DIRS} ${REST_PATH}/include)
-endif()
 
+set(INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/include ${ROOT_INCLUDE_DIRS} ${REST_INCLUDE_DIRS})
 
-set(lnklib ${ROOT_LIBRARIES} RestRaw)
-string(STRIP "${lnklib}" lnklib)
+set(LINK_LIBRARIES ${ROOT_LIBRARIES} RestRaw)
+string(STRIP "${LINK_LIBRARIES}" LINK_LIBRARIES)
 
 add_subdirectory(daq)
 add_subdirectory(gui)
 
 #-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-#Add execuatable and link to restDAQ libraries
-add_executable(restDAQManager restDAQManager.cxx)
-target_link_libraries(restDAQManager LINK_PUBLIC RESTDAQ ${lnklib})
+#Add executable and link to restDAQ libraries
+
+set(EXECUTABLE_NAME restDAQManager)
+
+add_executable(${EXECUTABLE_NAME} restDAQManager.cxx)
+
+target_link_libraries(${EXECUTABLE_NAME} PUBLIC RESTDAQ ${LINK_LIBRARIES} ${ROOT_LIBRARIES} RestRaw)
+target_include_directories(${EXECUTABLE_NAME} SYSTEM PUBLIC ${INCLUDE_DIRS})
+
+message(STATUS "include directories: ${INCLUDE_DIRS}")
 
 #----------------------------------------------------------------------------
 # Copy restDAQManager to the install directory
-install(TARGETS restDAQManager DESTINATION bin)
+install(TARGETS ${EXECUTABLE_NAME} DESTINATION bin)
 
 #----------------------------------------------------------------------------
 # Copy macros to the install directory
@@ -68,6 +74,8 @@ INSTALL(FILES ${MAC} DESTINATION ./macros/daq)
 # Install the executable to 'bin' directory under CMAKE_INSTALL_PREFIX
 #
 #install(TARGETS ${PROJECT_NAME} DESTINATION bin)
-set(package_added "${PROJECT_NAME}")
-set(package_added ${package_added} PARENT_SCOPE)
 
+if (NOT ${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME})
+    set(package_added "${PROJECT_NAME}")
+    set(package_added ${package_added} PARENT_SCOPE)
+endif ()
