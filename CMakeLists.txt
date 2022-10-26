@@ -6,7 +6,7 @@ project(restDAQ)
 set(CMAKE_CXX_STANDARD 17)
 
 if (${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME})
-    # this will only be accessed when build restG4 as a standalone package, not when building the framework
+    # this will only be entered when build restDAQ as a standalone package, not when building the framework
     message(STATUS "${PROJECT_NAME} standalone build")
     CMAKE_MINIMUM_REQUIRED(VERSION 3.16)
     find_package(REST REQUIRED)
@@ -28,7 +28,7 @@ execute_process(COMMAND root-config --cflags OUTPUT_VARIABLE ROOT_CFLAGS)
 string(STRIP ${ROOT_CFLAGS} ROOT_CFLAGS)
 message("-- Found ROOT version: ${ROOT_VERSION} with compilation flags: ${ROOT_CFLAGS} and libraries: ${ROOT_LIBRARIES}")
 
-#Find REST
+# Find REST
 if (NOT DEFINED CMAKE_INSTALL_PREFIX)
     set(CMAKE_INSTALL_PREFIX ${REST_PATH})
 endif ()
@@ -85,3 +85,7 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/examples/
         DESTINATION examples
         COMPONENT install
         )
+
+if (${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME})
+    include(cmake/source.cmake)
+endif ()
