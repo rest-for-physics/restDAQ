@@ -12,23 +12,22 @@ Author: JuanAn Garcia 18/05/2021
 TRESTDAQDCC::TRESTDAQDCC(TRestRun* rR, TRestRawDAQMetadata* dM) : TRESTDAQ(rR, dM) { initialize(); }
 
 void TRESTDAQDCC::initialize() {
-  dcc_socket.Open(GetDAQMetadata()->GetBaseIp(),GetDAQMetadata()->GetLocalIp(), REMOTE_DST_PORT);
+    dcc_socket.Open(GetDAQMetadata()->GetBaseIp(), GetDAQMetadata()->GetLocalIp(), REMOTE_DST_PORT);
 
-    for(auto fec : GetDAQMetadata()->GetFECs()){
-      FECMask |= (1 << fec.id);
-        if(nFECs==0)startFEC = fec.id;
+    for (auto fec : GetDAQMetadata()->GetFECs()) {
+        FECMask |= (1 << fec.id);
+        if (nFECs == 0) startFEC = fec.id;
         endFEC = fec.id;
-      nFECs++;
+        nFECs++;
     }
-
 }
 
 void TRESTDAQDCC::configure() {
     std::cout << "Configuring readout" << std::endl;
 
     char cmd[200];
-    if( SendCommand("fem 0") == DCCPacket::packetReply::ERROR)//Check first command, thow exception if DCC doesn't reply
-      throw (TRESTDAQException("I didn't get reply from the DCC, please check the network"));
+    if (SendCommand("fem 0") == DCCPacket::packetReply::ERROR)  // Check first command, thow exception if DCC doesn't reply
+        throw(TRESTDAQException("I didn't get reply from the DCC, please check the network"));
 
     // SendCommand("triglat 3 2000");//Trigger latency
     SendCommand("pokes 0x8 0x0000");                                // Disable pulser
@@ -37,23 +36,23 @@ void TRESTDAQDCC::configure() {
     SendCommand(cmd);
     SendCommand("pokes 0x16 0x0");    // Set trigger delay
     SendCommand("pokes 0x1A 0x1ff");  // SCA delay and trigger
-      if (GetDAQMetadata()->GetAcquisitionType() == "pedestal"){
+    if (GetDAQMetadata()->GetAcquisitionType() == "pedestal") {
         SendCommand("pokes 0x14 0x400");  // Set SCA readback offset
-      } else {
+    } else {
         SendCommand("pokes 0x14 0xc00");  // Set SCA readback offset
-      }
+    }
     int pk = 0xffc0 | FECMask;
     sprintf(cmd, "pokeb 0x4 0x%X", pk);  // Set FEC mask, note that is inverted
     SendCommand(cmd);
     // SendCommand("pokeb 0x5 0x0",-1);//Deplecated?
 
     // Configure AFTER chip
-    for(auto fec : GetDAQMetadata()->GetFECs()) {
+    for (auto fec : GetDAQMetadata()->GetFECs()) {
         sprintf(cmd, "fec %d", fec.id);
         SendCommand(cmd);
-          for (int a = 0; a < 4; a++) {
-            if(!fec.asic_isActive[a])continue;
-            unsigned int reg = ( (fec.asic_shappingTime[a] & 0xF) << 3) | ( (fec.asic_gain[a] & 0x3) << 1) ;
+        for (int a = 0; a < 4; a++) {
+            if (!fec.asic_isActive[a]) continue;
+            unsigned int reg = ((fec.asic_shappingTime[a] & 0xF) << 3) | ((fec.asic_gain[a] & 0x3) << 1);
             sprintf(cmd, "asic %d write 1 0x%X", a, reg);  // Gain and shapping time
             SendCommand(cmd);
             sprintf(cmd, "asic %d write 2 0xA000", a);  // Output buffers
@@ -62,7 +61,7 @@ void TRESTDAQDCC::configure() {
             SendCommand(cmd);
             sprintf(cmd, "asic %d write 4 0x3f 0xffff 0xffff", a);
             SendCommand(cmd);
-          }
+        }
     }
     // SendCommand("isobus 0x0F", -1);//Reset event counter, timestamp set eventType to test
 }
@@ -101,27 +100,28 @@ void TRESTDAQDCC::pedestal() {
         SendCommand("isobus 0x1C");     // SCA stop
         waitForTrigger();
         SendCommand("fem 0");
-          for(auto fec : GetDAQMetadata()->GetFECs()) {
+        for (auto fec : GetDAQMetadata()->GetFECs()) {
             for (int a = 0; a < 4; a++) {
-              if(!fec.asic_isActive[a])continue;
-              sprintf(cmd, "hped acc %d %d %d:%d", fec.id, a, fec.asic_channelStart[a], fec.asic_channelEnd[a]);
-              SendCommand(cmd);  // Get pedestals
+                if (!fec.asic_isActive[a]) continue;
+                sprintf(cmd, "hped acc %d %d %d:%d", fec.id, a, fec.asic_channelStart[a], fec.asic_channelEnd[a]);
+                SendCommand(cmd);  // Get pedestals
             }
-          }   
+        }
     }
 
     SendCommand("fem 0");
-      for(auto fec : GetDAQMetadata()->GetFECs()) {
-            for (int a = 0; a < 4; a++) {
-              if(!fec.asic_isActive[a])continue;
-              sprintf(cmd, "hped getsummary %d %d %d:%d", fec.id, a, fec.asic_channelStart[a], fec.asic_channelEnd[a]);
-              SendCommand(cmd, DCCPacket::packetType::BINARY, 1);  // Get summary
-              sprintf(cmd, "hped centermean %d %d %d:%d %d", fec.id, a, fec.asic_channelStart[a], fec.asic_channelEnd[a], fec.asic_pedCenter[a]);
-              SendCommand(cmd);  // Set mean
-              sprintf(cmd, "hped setthr %d %d %d:%d %d %.1f", fec.id, a, fec.asic_channelStart[a], fec.asic_channelEnd[a], fec.asic_pedCenter[a], fec.asic_pedThr[a]);
-              SendCommand(cmd);  // Set threshold
-            }
-          }
+    for (auto fec : GetDAQMetadata()->GetFECs()) {
+        for (int a = 0; a < 4; a++) {
+            if (!fec.asic_isActive[a]) continue;
+            sprintf(cmd, "hped getsummary %d %d %d:%d", fec.id, a, fec.asic_channelStart[a], fec.asic_channelEnd[a]);
+            SendCommand(cmd, DCCPacket::packetType::BINARY, 1);  // Get summary
+            sprintf(cmd, "hped centermean %d %d %d:%d %d", fec.id, a, fec.asic_channelStart[a], fec.asic_channelEnd[a], fec.asic_pedCenter[a]);
+            SendCommand(cmd);  // Set mean
+            sprintf(cmd, "hped setthr %d %d %d:%d %d %.1f", fec.id, a, fec.asic_channelStart[a], fec.asic_channelEnd[a], fec.asic_pedCenter[a],
+                    fec.asic_pedThr[a]);
+            SendCommand(cmd);  // Set threshold
+        }
+    }
 }
 
 void TRESTDAQDCC::dataTaking() {
@@ -136,22 +136,22 @@ void TRESTDAQDCC::dataTaking() {
     while (!abrt && (GetDAQMetadata()->GetNEvents() == 0 || event_cnt < GetDAQMetadata()->GetNEvents())) {
         SendCommand("fem 0");
 
-        SendCommand("isobus 0x6C");// SCA start
+        SendCommand("isobus 0x6C");                                                        // SCA start
         if (GetDAQMetadata()->GetTriggerType() == "internal") SendCommand("isobus 0x1C");  // SCA stop case of internal trigger
         GetSignalEvent()->Initialize();
         GetSignalEvent()->SetID(event_cnt);
         waitForTrigger();
         // Perform data acquisition phase, compress, accept size
         GetSignalEvent()->SetTime(getCurrentTime());
-          for(auto fec : GetDAQMetadata()->GetFECs()) {
+        for (auto fec : GetDAQMetadata()->GetFECs()) {
             for (int a = 0; a < 4; a++) {
-              if(!fec.asic_isActive[a])continue;
-              sprintf(cmd, "areq %d %d %d %d %d", GetDAQMetadata()->GetCompressMode(), fec.id, a, fec.asic_channelStart[a], fec.asic_channelEnd[a]);
-              SendCommand(cmd, DCCPacket::packetType::BINARY);
+                if (!fec.asic_isActive[a]) continue;
+                sprintf(cmd, "areq %d %d %d %d %d", GetDAQMetadata()->GetCompressMode(), fec.id, a, fec.asic_channelStart[a], fec.asic_channelEnd[a]);
+                SendCommand(cmd, DCCPacket::packetType::BINARY);
             }
-          }
+        }
 
-        FillTree(GetRestRun(),GetSignalEvent());
+        FillTree(GetRestRun(), GetSignalEvent());
     }
 }
 
@@ -165,8 +165,8 @@ void TRESTDAQDCC::saveEvent(unsigned char* buf, int size) {
     if (size <= 0) return;
     DCCPacket::DataPacket* dp = (DCCPacket::DataPacket*)buf;
 
-    //Check if packet has ADC data
-    if( GET_TYPE(ntohs(dp->hdr) ) != RESP_TYPE_ADC_DATA )return;
+    // Check if packet has ADC data
+    if (GET_TYPE(ntohs(dp->hdr)) != RESP_TYPE_ADC_DATA) return;
 
     const unsigned int scnt = ntohs(dp->scnt);
     if ((scnt <= 8) && (ntohs(dp->samp[0]) == 0) && (ntohs(dp->samp[1]) == 0)) return;  // empty data
@@ -182,24 +182,24 @@ void TRESTDAQDCC::saveEvent(unsigned char* buf, int size) {
     if (verboseLevel >= TRestStringOutput::REST_Verbose_Level::REST_Debug)
         std::cout << "FEC " << fec << " asic " << asic << " channel " << channel << " physChann " << physChannel << "\n";
 
-   //bool compress = GET_RB_COMPRESS(ntohs(dp->args) );
-   std::vector<Short_t> sData(512, 0);
-   Short_t *sDataPtr = sData.data();
+    // bool compress = GET_RB_COMPRESS(ntohs(dp->args) );
+    std::vector<Short_t> sData(512, 0);
+    Short_t* sDataPtr = sData.data();
 
-   unsigned short timeBin = 0;
+    unsigned short timeBin = 0;
 
-      for (int i = 0; i < scnt && i<511; i++) {
+    for (int i = 0; i < scnt && i < 511; i++) {
         Short_t data = ntohs(dp->samp[i]);
-          if (((data & 0xFE00) >> 9) == 8) {
-              timeBin = GET_CELL_INDEX(data);
-          } else if ((((data & 0xF000) >> 12) == 0)) {//Check fastest method
-              if (timeBin < 512) sDataPtr[timeBin] = std::move(data);
-              //if (timeBin < 512) sDataPtr[timeBin] = data;
-              //if (timeBin < 512)memcpy(&sData[timeBin],&data,sizeof(Short_t));
-              //if (timeBin < 512)std::copy(&sData[timeBin],&sData[timeBin], &data);
-              timeBin++;
-          }
-      }
+        if (((data & 0xFE00) >> 9) == 8) {
+            timeBin = GET_CELL_INDEX(data);
+        } else if ((((data & 0xF000) >> 12) == 0)) {  // Check fastest method
+            if (timeBin < 512) sDataPtr[timeBin] = std::move(data);
+            // if (timeBin < 512) sDataPtr[timeBin] = data;
+            // if (timeBin < 512)memcpy(&sData[timeBin],&data,sizeof(Short_t));
+            // if (timeBin < 512)std::copy(&sData[timeBin],&sData[timeBin], &data);
+            timeBin++;
+        }
+    }
 
     TRestRawSignal rawSignal(physChannel, sData);
     GetSignalEvent()->AddSignal(rawSignal);
@@ -207,12 +207,12 @@ void TRESTDAQDCC::saveEvent(unsigned char* buf, int size) {
 
 DCCPacket::packetReply TRESTDAQDCC::SendCommand(const char* cmd, DCCPacket::packetType pckType, size_t nPackets) {
     if (sendto(dcc_socket.client, cmd, strlen(cmd), 0, (struct sockaddr*)&(dcc_socket.target), sizeof(struct sockaddr)) == -1) {
-        std::string error ="sendto failed: " + std::string(strerror(errno));
-        throw (TRESTDAQException(error));
-        //return DCCPacket::packetReply::ERROR;
+        std::string error = "sendto failed: " + std::string(strerror(errno));
+        throw(TRESTDAQException(error));
+        // return DCCPacket::packetReply::ERROR;
     }
 
-      if (verboseLevel >= TRestStringOutput::REST_Verbose_Level::REST_Debug)std::cout<<"Command sent "<<cmd<<std::endl;
+    if (verboseLevel >= TRestStringOutput::REST_Verbose_Level::REST_Debug) std::cout << "Command sent " << cmd << std::endl;
 
     // wait for incoming messages
     bool done = false;
@@ -234,18 +234,19 @@ DCCPacket::packetReply TRESTDAQDCC::SendCommand(const char* cmd, DCCPacket::pack
                 if (errno == EWOULDBLOCK || errno == EAGAIN) {
                     if (cnt % 1000 == 0) {
                         duration = std::chrono::duration_cast<std::chrono::duration<int>>(std::chrono::steady_clock::now() - startTime);
-                        if (verboseLevel >= TRestStringOutput::REST_Verbose_Level::REST_Extreme) fprintf(stderr, "socket() failed: %s\n", strerror(errno));
+                        if (verboseLevel >= TRestStringOutput::REST_Verbose_Level::REST_Extreme)
+                            fprintf(stderr, "socket() failed: %s\n", strerror(errno));
                     }
                 } else {
-                  std::string error ="recvfrom failed: " + std::string(strerror(errno));
-                  throw (TRESTDAQException(error));
+                    std::string error = "recvfrom failed: " + std::string(strerror(errno));
+                    throw(TRESTDAQException(error));
                 }
             }
             cnt++;
         } while (length < 0 && duration.count() < 10 && !abrt);
 
-        if(abrt){
-          std::cerr << "Run aborted" << std::endl;
+        if (abrt) {
+            std::cerr << "Run aborted" << std::endl;
             return DCCPacket::packetReply::ERROR;
         }
 
@@ -284,11 +285,11 @@ DCCPacket::packetReply TRESTDAQDCC::SendCommand(const char* cmd, DCCPacket::pack
 
             DCCPacket::DataPacket* data_pkt = (DCCPacket::DataPacket*)buf_ual;
 
-            if(nPackets==0)saveEvent(buf_ual, length);
+            if (nPackets == 0) saveEvent(buf_ual, length);
 
             // Check End Of Event
             if (GET_FRAME_TY_V2(ntohs(data_pkt->dcchdr)) & FRAME_FLAG_EOEV || GET_FRAME_TY_V2(ntohs(data_pkt->dcchdr)) & FRAME_FLAG_EORQ ||
-                (nPackets >0 && pckCnt >= nPackets) ) {
+                (nPackets > 0 && pckCnt >= nPackets)) {
                 done = true;
             }
 
@@ -304,7 +305,6 @@ DCCPacket::packetReply TRESTDAQDCC::SendCommand(const char* cmd, DCCPacket::pack
 void TRESTDAQDCC::waitForTrigger() {  // Wait till trigger is acquired
     DCCPacket::packetReply reply;
     do {
-        reply = SendCommand("wait 1000000");                   // Wait for the event to be acquired
+        reply = SendCommand("wait 1000000");                    // Wait for the event to be acquired
     } while (reply == DCCPacket::packetReply::RETRY && !abrt);  // Infinite loop till aborted or wait succeed
 }
-

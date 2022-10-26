@@ -2,12 +2,13 @@
 #ifndef __TREST_DAQ_SOCKET__
 #define __TREST_DAQ_SOCKET__
 
-#include <unistd.h>
+#include <arpa/inet.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-#include <arpa/inet.h>
-#include <iostream>
+#include <unistd.h>
+
 #include <cerrno>
+#include <iostream>
 #include <mutex>
 
 #include "TRESTDAQException.h"
@@ -16,7 +17,7 @@
 
 class TRESTDAQSocket {
    public:
-    TRESTDAQSocket(){ };
+    TRESTDAQSocket(){};
     int client;
     struct sockaddr_in target;
     unsigned char* target_adr;
@@ -31,5 +32,3 @@ class TRESTDAQSocket {
 };
 
 #endif
-
-

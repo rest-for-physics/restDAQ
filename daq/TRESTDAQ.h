@@ -12,13 +12,14 @@ To implement generic methods here
 #ifndef __TREST_DAQ__
 #define __TREST_DAQ__
 
+#include <TRestRawDAQMetadata.h>
+#include <TRestRawSignalEvent.h>
+#include <TRestRun.h>
+
 #include <iostream>
 #include <string>
 
 #include "TRESTDAQException.h"
-#include "TRestRawDAQMetadata.h"
-#include "TRestRawSignalEvent.h"
-#include "TRestRun.h"
 
 class TRESTDAQ {
    public:

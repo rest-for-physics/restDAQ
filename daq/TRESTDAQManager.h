@@ -43,15 +43,15 @@ class TRESTDAQManager {
 
     void dataTaking();
     void startUp();
-    std::unique_ptr<TRESTDAQ> GetTRESTDAQ (TRestRun* rR, TRestRawDAQMetadata* dM);
+    std::unique_ptr<TRESTDAQ> GetTRESTDAQ(TRestRun* rR, TRestRawDAQMetadata* dM);
 
     // Shared Memory
     static void InitializeSharedMemory(sharedMemoryStruct* sM);
     static void PrintSharedMemory(sharedMemoryStruct* sM);
-    static bool GetSharedMemory(int& sid, sharedMemoryStruct** sM, int flag =0, bool verbose=true);
+    static bool GetSharedMemory(int& sid, sharedMemoryStruct** sM, int flag = 0, bool verbose = true);
     static void DetachSharedMemory(sharedMemoryStruct** sM);
 
-    static int GetFileSize(const std::string &filename);
+    static int GetFileSize(const std::string& filename);
 
     // Control commands
     static void StopRun();

@@ -1,8 +1,10 @@
 
-#include <iostream>
-#include "TGMsgBox.h"
-
 #include "TRestDAQGUI.h"
+
+#include <TGMsgBox.h>
+
+#include <iostream>
+
 #include "TRESTDAQManager.h"
 
 ClassImp(TRestDAQGUI);
@@ -10,16 +12,15 @@ ClassImp(TRestDAQGUI);
 std::atomic<bool> TRestDAQGUI::exitGUI(false);
 std::atomic<int> TRestDAQGUI::status(-1);
 
-
-TRestDAQGUI::TRestDAQGUI(const int& p, const int& q, TRestDAQGUIMetadata *mt) {
+TRestDAQGUI::TRestDAQGUI(const int& p, const int& q, TRestDAQGUIMetadata* mt) {
     fMain = new TGMainFrame(gClient->GetRoot(), p, q, kHorizontalFrame);
 
     fMain->SetCleanup(kDeepCleanup);
 
     guiMetadata = mt;
-    
-    if(guiMetadata==nullptr) guiMetadata = new TRestDAQGUIMetadata();
-    
+
+    if (guiMetadata == nullptr) guiMetadata = new TRestDAQGUIMetadata();
+
     LoadLastSettings();
     UpdateInputs();
 
@@ -71,24 +72,24 @@ TRestDAQGUI::TRestDAQGUI(const int& p, const int& q, TRestDAQGUIMetadata *mt) {
     pulses->GetXaxis()->SetTitle("TimeBin");
     pulses->GetYaxis()->SetTitle("ADC");
 
-    hitmap = new TH2Poly("Hitmap empty", "Hitmap empty",0,1,0,1);
-    #ifdef REST_DetectorLib
-      TFile *file = TFile::Open(guiMetadata->GetReadoutFile());
-        if(file == nullptr || file->IsZombie() ) {
-          std::cout<<"Not valid file "<<guiMetadata->GetReadoutFile()<<std::endl;
-        } else if (file->GetKey(guiMetadata->GetReadoutName()) == nullptr ) {
-          std::cout<<"Key "<< guiMetadata->GetReadoutName()<<" not found "<<std::endl;
-          file->Close();
-        } else {
-          fReadout = (TRestDetectorReadout *)file->Get(guiMetadata->GetReadoutName());
-            if(fReadout){
-              fReadout->PrintMetadata();
-              TRestDetectorReadoutPlane* plane = &(*fReadout)[0];
-              hitmap = plane->GetReadoutHistogram();
-            }
-          file->Close();
+    hitmap = new TH2Poly("Hitmap empty", "Hitmap empty", 0, 1, 0, 1);
+#ifdef REST_DetectorLib
+    TFile* file = TFile::Open(guiMetadata->GetReadoutFile());
+    if (file == nullptr || file->IsZombie()) {
+        std::cout << "Not valid file " << guiMetadata->GetReadoutFile() << std::endl;
+    } else if (file->GetKey(guiMetadata->GetReadoutName()) == nullptr) {
+        std::cout << "Key " << guiMetadata->GetReadoutName() << " not found " << std::endl;
+        file->Close();
+    } else {
+        fReadout = (TRestDetectorReadout*)file->Get(guiMetadata->GetReadoutName());
+        if (fReadout) {
+            fReadout->PrintMetadata();
+            TRestDetectorReadoutPlane* plane = &(*fReadout)[0];
+            hitmap = plane->GetReadoutHistogram();
         }
-    #endif
+        file->Close();
+    }
+#endif
 
     fECanvas->GetCanvas()->cd(4);
     hitmap->Draw("COLZ0");
@@ -271,11 +272,7 @@ void TRestDAQGUI::SetButtons() {
     fVLeft->AddFrame(quitFrame, new TGLayoutHints(kLHintsCenterX | kFixedWidth, 1, 1, 1, 1));
 }
 
-void TRestDAQGUI::VerifyEventsEntry(){
-
-  nEventsEntry->SetText( std::to_string(std::atoi(nEventsEntry->GetText() ) ).c_str() );
-
-}
+void TRestDAQGUI::VerifyEventsEntry() { nEventsEntry->SetText(std::to_string(std::atoi(nEventsEntry->GetText())).c_str()); }
 
 void TRestDAQGUI::StartPressed() {
     int shmid;
@@ -287,14 +284,14 @@ void TRestDAQGUI::StartPressed() {
     type = typeCombo->GetSelected();
     for (const auto& [name, t] : daq_metadata_types::acqTypes_map) {
         if (type == static_cast<int>(t)) {
-            std::cout<<name<<std::endl;
+            std::cout << name << std::endl;
             sprintf(mem->runType, name.c_str());
             break;
         }
     }
 
     cfgFileName = cfgName->GetText();
-    std::cout<<cfgFileName<<std::endl;
+    std::cout << cfgFileName << std::endl;
     sprintf(mem->cfgFile, cfgFileName.c_str());
 
     nEvents = std::atoi(nEventsEntry->GetText());
@@ -316,37 +313,35 @@ void TRestDAQGUI::StopPressed() {
 }
 
 void TRestDAQGUI::StartUpPressed() {
-
     startUpMain = new TGTransientFrame(gClient->GetRoot(), fMain, 400, 200);
-    startUpMain->DontCallClose(); // to avoid double deletions.
+    startUpMain->DontCallClose();  // to avoid double deletions.
     startUpMain->SetCleanup(kDeepCleanup);
     startUpMain->Resize();
-     // position relative to the parent's window
+    // position relative to the parent's window
     startUpMain->CenterOnParent();
 
-    int retval=0;
+    int retval = 0;
     startUpMain->Disconnect("CloseWindow()");
     startUpMain->Connect("CloseWindow()", "TRestDAQGUI", this, "CloseStartUpWindow()");
-    new TGMsgBox(gClient->GetRoot(), startUpMain,
-                "START UP", "Start up is only needed after power-cycle, do you want to continue?",
-                kMBIconExclamation, kMBYes| kMBNo, &retval);
+    new TGMsgBox(gClient->GetRoot(), startUpMain, "START UP", "Start up is only needed after power-cycle, do you want to continue?",
+                 kMBIconExclamation, kMBYes | kMBNo, &retval);
 
     startUpMain->MapWindow();
-    //gClient->WaitFor(startUpMain);
+    // gClient->WaitFor(startUpMain);
 
-    if(retval == kMBYes){
-      int shmid;
-      TRESTDAQManager::sharedMemoryStruct* mem;
+    if (retval == kMBYes) {
+        int shmid;
+        TRESTDAQManager::sharedMemoryStruct* mem;
         if (!TRESTDAQManager::GetSharedMemory(shmid, &mem)) {
-          std::cerr << "Cannot get shared memory, please make sure that restDAQManager is running" << std::endl;
-          return;
+            std::cerr << "Cannot get shared memory, please make sure that restDAQManager is running" << std::endl;
+            return;
         }
 
-      cfgFileName = cfgName->GetText();
-      std::cout<<cfgFileName<<std::endl;
-      sprintf(mem->cfgFile, cfgFileName.c_str());
-      mem->startUp = 1;
-      TRESTDAQManager::DetachSharedMemory(&mem);
+        cfgFileName = cfgName->GetText();
+        std::cout << cfgFileName << std::endl;
+        sprintf(mem->cfgFile, cfgFileName.c_str());
+        mem->startUp = 1;
+        TRESTDAQManager::DetachSharedMemory(&mem);
     }
 
     delete startUpMain;
@@ -354,7 +349,7 @@ void TRestDAQGUI::StartUpPressed() {
 
 void TRestDAQGUI::cfgButtonPressed() {
     cfgMain = new TGTransientFrame(gClient->GetRoot(), fMain, 400, 200);
-    cfgMain->DontCallClose(); // to avoid double deletions.
+    cfgMain->DontCallClose();  // to avoid double deletions.
     cfgMain->Disconnect("CloseWindow()");
     cfgMain->Connect("CloseWindow()", "TRestDAQGUI", this, "CloseCfgWindow()");
     cfgMain->SetCleanup(kDeepCleanup);
@@ -428,17 +423,16 @@ void TRestDAQGUI::SaveLastSettings() {
 }
 
 void TRestDAQGUI::UpdateInputs() {
-
-  int shmid;
-  TRESTDAQManager::sharedMemoryStruct* mem;
-  if (!TRESTDAQManager::GetSharedMemory(shmid, &mem)) {
+    int shmid;
+    TRESTDAQManager::sharedMemoryStruct* mem;
+    if (!TRESTDAQManager::GetSharedMemory(shmid, &mem)) {
         std::cerr << "Cannot get shared memory, please make sure that restDAQManager is running" << std::endl;
         return;
     }
-    //Only update if is DAQ running
-    if(mem->status != 1){
-      TRESTDAQManager::DetachSharedMemory(&mem);
-      return;
+    // Only update if is DAQ running
+    if (mem->status != 1) {
+        TRESTDAQManager::DetachSharedMemory(&mem);
+        return;
     }
 
     auto rT = daq_metadata_types::acqTypes_map.find(mem->runType);
@@ -448,7 +442,6 @@ void TRestDAQGUI::UpdateInputs() {
     nEvents = mem->nEvents;
 
     TRESTDAQManager::DetachSharedMemory(&mem);
-
 }
 
 void TRestDAQGUI::UpdateOutputs() {
@@ -520,13 +513,13 @@ void TRestDAQGUI::SetUnknownState() {
     cfgButton->SetEnabled(kFALSE);
 }
 
-bool TRestDAQGUI::GetDAQManagerParams(double &lastTimeUpdate) {
+bool TRestDAQGUI::GetDAQManagerParams(double& lastTimeUpdate) {
     int shmid;
     TRESTDAQManager::sharedMemoryStruct* mem;
     if (!TRESTDAQManager::GetSharedMemory(shmid, &mem, 0, false)) {
-        if( (tNow - lastTimeUpdate) > 30 ){
-          std::cerr << "Cannot get shared memory, please make sure that restDAQManager is running" << std::endl;
-          lastTimeUpdate = tNow;
+        if ((tNow - lastTimeUpdate) > 30) {
+            std::cerr << "Cannot get shared memory, please make sure that restDAQManager is running" << std::endl;
+            lastTimeUpdate = tNow;
         }
         return false;
     }
@@ -543,8 +536,7 @@ bool TRestDAQGUI::GetDAQManagerParams(double &lastTimeUpdate) {
 }
 
 void TRestDAQGUI::UpdateParams() {
-
-  double lastTimeUpdate = 0;
+    double lastTimeUpdate = 0;
 
     while (!exitGUI) {
         tNow = TRESTDAQ::getCurrentTime();
@@ -571,14 +563,12 @@ void TRestDAQGUI::UpdateParams() {
 }
 
 void TRestDAQGUI::READ() {
-
     while (!exitGUI) {
-
-       std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME));
+        std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME));
 
         if (status == 1) {
             int fSize = TRESTDAQManager::GetFileSize(runN);
-            if(fSize < guiMetadata->GetMinFileSize() )continue;//Wait till filesize is big enough
+            if (fSize < guiMetadata->GetMinFileSize()) continue;  // Wait till filesize is big enough
 
             TFile f(runN.c_str());
             if (f.IsZombie()) continue;
@@ -616,7 +606,7 @@ void TRestDAQGUI::READ() {
                     AnalyzeEvent(fEvent, timeUpdate);
                     i++;
                 }
-                std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME) );
+                std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME));
                 tree->Refresh();
             }
             f.Close();
@@ -646,8 +636,7 @@ void TRestDAQGUI::UpdateRate(const double& currentTimeEv, double& oldTimeEv, con
 }
 
 void TRestDAQGUI::AnalyzeEvent(TRestRawSignalEvent* fEvent, double& oldTimeUpdate) {
-
-    bool updatePlots = tNow > (oldTimeUpdate + PLOTS_UPDATE_TIME );
+    bool updatePlots = tNow > (oldTimeUpdate + PLOTS_UPDATE_TIME);
 
     if (updatePlots) {
         pulsesGraph.clear();
@@ -655,24 +644,23 @@ void TRestDAQGUI::AnalyzeEvent(TRestRawSignalEvent* fEvent, double& oldTimeUpdat
 
     int evAmplitude = 0;
     std::map<int, int> hmap;
-    int color =1;
+    int color = 1;
     for (int s = 0; s < fEvent->GetNumberOfSignals(); s++) {
         TRestRawSignal* signal = fEvent->GetSignal(s);
         const double max = signal->GetAmplitudeFast(TVector2(guiMetadata->GetBaselineRange()), guiMetadata->GetSignalThreshold());
 
-        if(max<=0)continue;
+        if (max <= 0) continue;
 
-        evAmplitude +=max;
+        evAmplitude += max;
         hmap[signal->GetID()] = max;
 
-          if (updatePlots) 
-            pulsesGraph.emplace_back( signal->GetGraph(color));
+        if (updatePlots) pulsesGraph.emplace_back(signal->GetGraph(color));
         color++;
     }
 
     if (!hmap.empty() && evAmplitude > 0) FillHitmap(hmap);
 
-    if(evAmplitude > 0)spectrum->Fill(evAmplitude);
+    if (evAmplitude > 0) spectrum->Fill(evAmplitude);
 
     if (updatePlots) {
         if (meanRateGraph->GetN() > 0 && instantRateGraph->GetN() > 0) {
@@ -689,12 +677,12 @@ void TRestDAQGUI::AnalyzeEvent(TRestRawSignalEvent* fEvent, double& oldTimeUpdat
             gr->Draw("SAME");
         }
 
-        #ifdef REST_DetectorLib
-          if(fReadout){
+#ifdef REST_DetectorLib
+        if (fReadout) {
             fECanvas->GetCanvas()->cd(4);
             hitmap->Draw("COLZ0");
-          }
-        #endif
+        }
+#endif
 
         fECanvas->GetCanvas()->Update();
         oldTimeUpdate = tNow;
@@ -702,23 +690,23 @@ void TRestDAQGUI::AnalyzeEvent(TRestRawSignalEvent* fEvent, double& oldTimeUpdat
 }
 
 void TRestDAQGUI::FillHitmap(const std::map<int, int>& hmap) {
-    #ifdef REST_DetectorLib
-    if(!fReadout)return;
+#ifdef REST_DetectorLib
+    if (!fReadout) return;
 
     double posX = 0, posY = 0;
     int ampX = 0, ampY = 0;
-    Int_t readoutChannel = -1, readoutModule, planeID=0;
+    Int_t readoutChannel = -1, readoutModule, planeID = 0;
     TRestDetectorReadoutPlane* plane = &(*fReadout)[0];
     for (const auto& [sID, ampl] : hmap) {
-      fReadout->GetPlaneModuleChannel(sID, planeID, readoutModule, readoutChannel);
-        if (readoutChannel==-1) continue;
+        fReadout->GetPlaneModuleChannel(sID, planeID, readoutModule, readoutChannel);
+        if (readoutChannel == -1) continue;
         Double_t x = plane->GetX(readoutModule, readoutChannel);
         Double_t y = plane->GetY(readoutModule, readoutChannel);
 
-        if ( TMath::IsNaN(y) ) {
+        if (TMath::IsNaN(y)) {
             posX += ampl * x;
             ampX += ampl;
-        } else if ( TMath::IsNaN(x) ) {
+        } else if (TMath::IsNaN(x)) {
             posY += ampl * y;
             ampY += ampl;
         }
@@ -729,5 +717,5 @@ void TRestDAQGUI::FillHitmap(const std::map<int, int>& hmap) {
     posX /= ampX;
     posY /= ampY;
     hitmap->Fill(posX, posY);
-    #endif
+#endif
 }

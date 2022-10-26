@@ -21,7 +21,7 @@
  *************************************************************************/
 
 /////////////////////////////////////////////////////////////////////////
-/// TRestDAQGUIMetadata holds the required configuration to launch                                     
+/// TRestDAQGUIMetadata holds the required configuration to launch
 /// a Grafical User Interface for data acquisition aka TRestDAQGUI.
 /// The default initialization is used in case no TRestDAQGUIMetadata
 /// while a TRestDAQGUI is instanciated.
@@ -36,9 +36,9 @@
 /// * **minFileSize**: Minimum file size to start reading a root file (bytes)
 /// * **readoutFile**: File name (root) where the readout is stored
 /// * **readoutName**: Name of the readout stored in the root file.
-/// 
+///
 /// ### Examples
-/// Give examples of usage and RML descriptions that can be tested.      
+/// Give examples of usage and RML descriptions that can be tested.
 /// \code
 ///  <TRestManager>
 ///    <TRestDAQGUIMetadata name="GUI Metadata" title="GUI Metadata" verboseLevel="info">
@@ -52,33 +52,31 @@
 ///    </TRestDAQGUIMetadata>
 ///  </TRestManager>
 /// \endcode
-/// 
-///                                                                      
+///
+///
 ///----------------------------------------------------------------------
-///                                                                      
-/// REST-for-Physics - Software for Rare Event Searches Toolkit 	    
-///                                                                      
-/// History of developments:                                             
-///                                                                      
+///
+/// REST-for-Physics - Software for Rare Event Searches Toolkit
+///
+/// History of developments:
+///
 /// 2022-June: First implementation of TRestDAQGUIMetadata
-/// JuanAn Garcia 
-///                                                                      
-/// \class TRestDAQGUIMetadata                                               
+/// JuanAn Garcia
+///
+/// \class TRestDAQGUIMetadata
 /// \author: JuanAn Garcia e-mail: juanangp@unizar.es
-///                                                                      
-/// <hr>                                                                 
-///                                                                      
+///
+/// <hr>
+///
 
 #include "TRestDAQGUIMetadata.h"
 
 ClassImp(TRestDAQGUIMetadata);
 
-///////////////////////////////////////////////                          
-/// \brief Default constructor                                          
-///                                                                      
-TRestDAQGUIMetadata::TRestDAQGUIMetadata() {
-    Initialize();
-}
+///////////////////////////////////////////////
+/// \brief Default constructor
+///
+TRestDAQGUIMetadata::TRestDAQGUIMetadata() { Initialize(); }
 
 /////////////////////////////////////////////
 /// \brief Constructor loading data from a config file
@@ -89,17 +87,13 @@ TRestDAQGUIMetadata::TRestDAQGUIMetadata(const char* configFilename, std::string
     if (GetVerboseLevel() >= TRestStringOutput::REST_Verbose_Level::REST_Info) PrintMetadata();
 }
 
-///////////////////////////////////////////////                          
-/// \brief Default destructor                                           
-///                                                                      
-TRestDAQGUIMetadata::~TRestDAQGUIMetadata() {
-}
+///////////////////////////////////////////////
+/// \brief Default destructor
+///
+TRestDAQGUIMetadata::~TRestDAQGUIMetadata() {}
 
-///////////////////////////////////////////////                          
-/// \brief Function to initialize input/output event members and define 
-/// the section name                                                     
-///                                                                      
-void TRestDAQGUIMetadata::Initialize() {
-    SetSectionName(this->ClassName());
-}
-
+///////////////////////////////////////////////
+/// \brief Function to initialize input/output event members and define
+/// the section name
+///
+void TRestDAQGUIMetadata::Initialize() { SetSectionName(this->ClassName()); }

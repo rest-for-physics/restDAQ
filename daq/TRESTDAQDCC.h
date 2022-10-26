@@ -12,8 +12,8 @@ Based on mclient program from Denis Calvet
 #ifndef __TREST_DAQ_DCC__
 #define __TREST_DAQ_DCC__
 
-#include "TRESTDAQ.h"
 #include "DCCPacket.h"
+#include "TRESTDAQ.h"
 #include "TRESTDAQSocket.h"
 
 class TRESTDAQDCC : public TRESTDAQ {
@@ -33,13 +33,13 @@ class TRESTDAQDCC : public TRESTDAQ {
     void waitForTrigger();
     void saveEvent(unsigned char* buf, int size);
 
-    uint16_t FECMask=0;
+    uint16_t FECMask = 0;
 
     int startFEC;
     int endFEC;
-    int chStart=3;
-    int chEnd=78;
-    int nFECs=0;
+    int chStart = 3;
+    int chEnd = 78;
+    int nFECs = 0;
 
     // Socket
     TRESTDAQSocket dcc_socket;
