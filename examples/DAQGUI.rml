@@ -3,7 +3,7 @@
 <TRestManager>
 
     <TRestDAQGUIMetadata name="GUI Metadata" title="GUI Metadata" verboseLevel="info">
-	<parameter name="baseLineRange" value="(50,120)"/>
+        <parameter name="baseLineRange" value="(50,120)"/>
         <parameter name="signalThreshold" value="2.0"/>
         <parameter name="binsSpectra" value="1000"/>
         <parameter name="spectraMax" value="100000"/>

@@ -2,76 +2,73 @@
 
 <TRestManager>
 
-<globals>
+    <globals>
 
-    <parameter name="mainDataPath" value="/home/juanan/test/" />
+        <parameter name="mainDataPath" value="/home/juanan/test/"/>
 
-</globals>
-
-
+    </globals>
 
 
-<TRestRun name="DummyDAQ" title="DUMMY DAQ" verboseLevel="info">
-	<parameter name="experiment" value="Test"/>
-	<parameter name="runNumber" value="auto"/>
-	<parameter name="runTag" value="DUMMY"/>
-	<!--parameter name="runType" value="auto"/-->
-	<parameter name="runDescription" value=""/>
-	<parameter name="user" value="${USER}"/>
-	<parameter name="verboseLevel" value="0"/>
-	<parameter name="overwrite" value="off" />
-	<parameter name="outputFileName" value="R[fRunNumber]_[fRunType]_[fRunTag].root"/>
-	<parameter name="readOnly" value="false" />
+    <TRestRun name="DummyDAQ" title="DUMMY DAQ" verboseLevel="info">
+        <parameter name="experiment" value="Test"/>
+        <parameter name="runNumber" value="auto"/>
+        <parameter name="runTag" value="DUMMY"/>
+        <!--parameter name="runType" value="auto"/-->
+        <parameter name="runDescription" value=""/>
+        <parameter name="user" value="${USER}"/>
+        <parameter name="verboseLevel" value="0"/>
+        <parameter name="overwrite" value="off"/>
+        <parameter name="outputFileName" value="R[fRunNumber]_[fRunType]_[fRunTag].root"/>
+        <parameter name="readOnly" value="false"/>
 
-</TRestRun>
+    </TRestRun>
 
-<TRestRawDAQMetadata name="DAQMetadata" title="DAQ Metadata" verboseLevel="info">
-	<parameter name ="baseIp" value="192:168:10:13"/>
-	<parameter name ="localIp" value="192:168:10:10"/>
-	<parameter name ="electronics" value="DUMMY"/>
-	<parameter name ="clockDiv" value="0x2" />
-	<parameter name ="triggerType" value="external"/>
-	<parameter name ="acquisitionType" value="background"/>
-	<parameter name ="compressMode" value="1"/>
-	<parameter name ="Nevents" value="10"/>
+    <TRestRawDAQMetadata name="DAQMetadata" title="DAQ Metadata" verboseLevel="info">
+        <parameter name="baseIp" value="192:168:10:13"/>
+        <parameter name="localIp" value="192:168:10:10"/>
+        <parameter name="electronics" value="DUMMY"/>
+        <parameter name="clockDiv" value="0x2"/>
+        <parameter name="triggerType" value="external"/>
+        <parameter name="acquisitionType" value="background"/>
+        <parameter name="compressMode" value="1"/>
+        <parameter name="Nevents" value="10"/>
 
-  <FEC id="2" ip="192:168:10:13" chip="after" clockDiv="0x2">
-    <ASIC id="*" isActive="true" gain="0x1" shappingTime="0x2" polarity="0" pedcenter="250" pedthr="5.0">
-        <channel id="*" isActive="true"></channel>
-        <channel id="0" isActive="false"></channel>
-        <channel id="1" isActive="false"></channel>
-        <channel id="2" isActive="false"></channel>
-    </ASIC>
-  </FEC>
+        <FEC id="2" ip="192:168:10:13" chip="after" clockDiv="0x2">
+            <ASIC id="*" isActive="true" gain="0x1" shappingTime="0x2" polarity="0" pedcenter="250" pedthr="5.0">
+                <channel id="*" isActive="true"/>
+                <channel id="0" isActive="false"/>
+                <channel id="1" isActive="false"/>
+                <channel id="2" isActive="false"/>
+            </ASIC>
+        </FEC>
 
-  <FEC id="3" ip="192:168:10:13" chip="after" clockDiv="0x2">
-    <ASIC id="*" isActive="true" gain="0x1" shappingTime="0x2" polarity="0" pedcenter="250" pedthr="5.0">
-        <channel id="*" isActive="true"></channel>
-        <channel id="0" isActive="false"></channel>
-        <channel id="1" isActive="false"></channel>
-        <channel id="2" isActive="false"></channel>
-    </ASIC>
-  </FEC>
+        <FEC id="3" ip="192:168:10:13" chip="after" clockDiv="0x2">
+            <ASIC id="*" isActive="true" gain="0x1" shappingTime="0x2" polarity="0" pedcenter="250" pedthr="5.0">
+                <channel id="*" isActive="true"/>
+                <channel id="0" isActive="false"/>
+                <channel id="1" isActive="false"/>
+                <channel id="2" isActive="false"/>
+            </ASIC>
+        </FEC>
 
-  <FEC id="4" ip="192:168:10:13" chip="after" clockDiv="0x2">
-    <ASIC id="*" isActive="true" gain="0x1" shappingTime="0x2" polarity="0" pedcenter="250" pedthr="5.0">
-        <channel id="*" isActive="true"></channel>
-        <channel id="0" isActive="false"></channel>
-        <channel id="1" isActive="false"></channel>
-        <channel id="2" isActive="false"></channel>
-    </ASIC>
-  </FEC>
+        <FEC id="4" ip="192:168:10:13" chip="after" clockDiv="0x2">
+            <ASIC id="*" isActive="true" gain="0x1" shappingTime="0x2" polarity="0" pedcenter="250" pedthr="5.0">
+                <channel id="*" isActive="true"/>
+                <channel id="0" isActive="false"/>
+                <channel id="1" isActive="false"/>
+                <channel id="2" isActive="false"/>
+            </ASIC>
+        </FEC>
 
-  <FEC id="5" ip="192:168:10:13" chip="after" clockDiv="0x2">
-    <ASIC id="*" isActive="true" gain="0x1" shappingTime="0x2" polarity="0" pedcenter="250" pedthr="5.0">
-        <channel id="*" isActive="true"></channel>
-        <channel id="0" isActive="false"></channel>
-        <channel id="1" isActive="false"></channel>
-        <channel id="2" isActive="false"></channel>
-    </ASIC>
-  </FEC>
+        <FEC id="5" ip="192:168:10:13" chip="after" clockDiv="0x2">
+            <ASIC id="*" isActive="true" gain="0x1" shappingTime="0x2" polarity="0" pedcenter="250" pedthr="5.0">
+                <channel id="*" isActive="true"/>
+                <channel id="0" isActive="false"/>
+                <channel id="1" isActive="false"/>
+                <channel id="2" isActive="false"/>
+            </ASIC>
+        </FEC>
 
-</TRestRawDAQMetadata>
+    </TRestRawDAQMetadata>
 
-    
 </TRestManager>
