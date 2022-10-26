@@ -63,7 +63,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(cli11)
 
-set(EXECUTABLE_NAME restDAQManager)
+set(EXECUTABLE_NAME restDAQ)
 
 add_executable(${EXECUTABLE_NAME} main.cxx)
 
