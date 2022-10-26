@@ -2,6 +2,9 @@
 #Setup the project
 
 project(restDAQ)
+
+set(CMAKE_CXX_STANDARD 17)
+
 message("===============  ${PROJECT_NAME}  ==============")
 
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../../cmake ${CMAKE_MODULE_PATH})
