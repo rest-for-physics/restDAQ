@@ -199,13 +199,17 @@ void TRESTDAQManager::run() {
     sharedMemoryStruct* sharedMemory;
     bool exitMan = false;
     do {
-        if (!GetSharedMemory(shmid, &sharedMemory)) break;
+        if (!GetSharedMemory(shmid, &sharedMemory)) {
+            break;
+        }
         exitMan = sharedMemory->exitManager;
 
         if (sharedMemory->startUp == 1) {
             DetachSharedMemory(&sharedMemory);
             startUp();
-            if (!GetSharedMemory(shmid, &sharedMemory)) break;
+            if (!GetSharedMemory(shmid, &sharedMemory)) {
+                break;
+            }
             sharedMemory->startUp = 0;
             sharedMemory->status = 0;
         }
@@ -218,7 +222,9 @@ void TRESTDAQManager::run() {
 
             dataTaking();
 
-            if (!GetSharedMemory(shmid, &sharedMemory)) break;
+            if (!GetSharedMemory(shmid, &sharedMemory)) {
+                break;
+            }
             sharedMemory->status = 0;
             sharedMemory->startDAQ = 0;
         }
@@ -279,7 +285,7 @@ void TRESTDAQManager::AbortThread() {
     int shmid;
     sharedMemoryStruct* sharedMemory;
 
-    bool abrt = 0;
+    bool abrt = false;
     do {
         if (!GetSharedMemory(shmid, &sharedMemory)) break;
         abrt = sharedMemory->abortRun;

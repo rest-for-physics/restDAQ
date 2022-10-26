@@ -52,11 +52,22 @@ add_subdirectory(gui)
 #-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 #Add executable and link to restDAQ libraries
 
+include(FetchContent)
+
+# External dependencies
+# cli11 (CLI parser)
+FetchContent_Declare(
+        cli11
+        GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
+        GIT_TAG v2.2.0
+)
+FetchContent_MakeAvailable(cli11)
+
 set(EXECUTABLE_NAME restDAQManager)
 
-add_executable(${EXECUTABLE_NAME} restDAQManager.cxx)
+add_executable(${EXECUTABLE_NAME} main.cxx)
 
-target_link_libraries(${EXECUTABLE_NAME} PUBLIC RESTDAQ ${LINK_LIBRARIES} ${ROOT_LIBRARIES} RestRaw)
+target_link_libraries(${EXECUTABLE_NAME} PUBLIC RESTDAQ RestDAQGUI ${LINK_LIBRARIES} ${ROOT_LIBRARIES} RestRaw PRIVATE CLI11::CLI11)
 target_include_directories(${EXECUTABLE_NAME} SYSTEM PUBLIC ${INCLUDE_DIRS})
 
 message(STATUS "include directories: ${INCLUDE_DIRS}")
