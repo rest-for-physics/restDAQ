@@ -96,6 +96,7 @@ int main(int argc, char** argv) {
     run->add_option("--stop", "Stop previous acquisition process if it exists")->expected(0);
     run->add_option("--startup", "Perform startup of electronics")->expected(0);
     run->add_option("--exit", "Perform startup of electronics")->expected(0);
+    run->add_option("--verbose,-v", "Verbose mode")->expected(0);
 
     app.require_subcommand(1);
     CLI11_PARSE(app, argc, argv);
@@ -135,12 +136,12 @@ int main(int argc, char** argv) {
 
         initializeSignalHandler();
 
-        TRESTDAQManager daqManager;
+        TRESTDAQManager manager;
 
         if (!configFilename.empty()) {
-            int shareMemoryID;
+            int sharedMemoryID;
             TRESTDAQManager::sharedMemoryStruct* sharedMemory;
-            if (!TRESTDAQManager::GetSharedMemory(shareMemoryID, &sharedMemory)) {
+            if (!TRESTDAQManager::GetSharedMemory(sharedMemoryID, &sharedMemory)) {
                 cerr << "Error accessing shared memory" << endl;
                 return 1;
             }
@@ -152,17 +153,26 @@ int main(int argc, char** argv) {
                 sprintf(sharedMemory->configFilename, "%s", configFilename.c_str());
             }
             TRESTDAQManager::DetachSharedMemory(&sharedMemory);
+
+            // Initialize
+
+            /*
+            if (!manager.Initialize()) {
+                cout << "Error initializing DAQ manager" << endl;
+                return 1;
+            }
+             */
             if (startupElectronics) {
                 cout << "Attempting electronics startup" << endl;
-                daqManager.startUp();
-                return 1;
-            } else {
-                daqManager.dataTaking();
+                manager.startUp();
             }
+            this_thread::sleep_for(chrono::seconds(1));
+
+            manager.dataTaking();
+
         } else {
             cout << "Starting infinite loop" << endl;
-            return 1;
-            daqManager.run();
+            manager.run();
         }
     }
 }

@@ -43,7 +43,10 @@ class TRESTDAQManager {
 
     void dataTaking();
     void startUp();
+
     static std::unique_ptr<TRESTDAQ> GetTRESTDAQ(TRestRun* run, TRestRawDAQMetadata* metadata);
+
+    bool Initialize() const;
 
     // Shared Memory
     static void InitializeSharedMemory(sharedMemoryStruct* sharedMemory);

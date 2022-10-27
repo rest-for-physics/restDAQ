@@ -33,6 +33,11 @@ class TRESTDAQ {
     virtual void initialize() = 0;
     virtual void startUp(){};
 
+    virtual bool Ping() const {
+        // To be overridden
+        return false;
+    };
+
     static std::atomic<bool> abrt;
     static std::atomic<int> event_cnt;
     static inline double lastEvTime = 0;

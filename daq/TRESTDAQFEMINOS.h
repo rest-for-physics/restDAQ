@@ -46,10 +46,12 @@ class TRESTDAQFEMINOS : public TRESTDAQ {
     void initialize() override;
     void startUp() override;
 
+    bool Ping() const override;
+
     static void ReceiveThread(std::vector<FEMProxy>* FEMA);
     static void ReceiveBuffer(FEMProxy& FEM);
     static void EventBuilderThread(std::vector<FEMProxy>* FEMA, TRestRun* run, TRestRawSignalEvent* sEvent);
-    static void waitForCmd(FEMProxy& FEM);
+    static bool waitForCmd(FEMProxy& FEM, int timeoutMillis = 10000);
     static std::atomic<bool> stopReceiver;
 
     inline static std::mutex mutex;

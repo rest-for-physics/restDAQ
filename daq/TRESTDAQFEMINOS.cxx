@@ -11,6 +11,8 @@ Author: JuanAn Garcia 18/08/2021
 
 #include "FEMINOSPacket.h"
 
+using namespace std;
+
 std::atomic<bool> TRESTDAQFEMINOS::stopReceiver(false);
 
 TRESTDAQFEMINOS::TRESTDAQFEMINOS(TRestRun* run, TRestRawDAQMetadata* metadata) : TRESTDAQ(run, metadata) { initialize(); }
@@ -33,6 +35,12 @@ void TRESTDAQFEMINOS::initialize() {
 }
 
 void TRESTDAQFEMINOS::startUp() {
+    std::cout << "Checking FEMINOS power status" << std::endl;
+    BroadcastCommand("fec_enable", FEMArray);
+    for (auto& FEM : FEMArray) {
+        cout << "FEM " << FEM.fecMetadata.id << " power status: " << FEM.cmd_rcv << endl;
+    }
+
     std::cout << "Starting up FEMINOS" << std::endl;
     // FEC Power-down
     BroadcastCommand("power_inv 0", FEMArray);
@@ -134,9 +142,9 @@ void TRESTDAQFEMINOS::configure() {
             SendCommand(cmd, FEM);
             for (int c = 0; c < 78; c++) {
                 if (FEM.fecMetadata.asic_channelActive[a][c]) continue;
-                sprintf(cmd, "forceoff %d %d 0x1", a);
+                sprintf(cmd, "forceoff %d 0x1", a);
                 SendCommand(cmd, FEM);
-                sprintf(cmd, "forceon %d %d 0x0", a);
+                sprintf(cmd, "forceon %d 0x0", a);
                 SendCommand(cmd, FEM);
             }
         }
@@ -299,9 +307,8 @@ void TRESTDAQFEMINOS::SendCommand(const char* cmd, FEMProxy& FEM, bool wait) {
     }
 
     lock.unlock();
-    if (verboseLevel >= TRestStringOutput::REST_Verbose_Level::REST_Debug || true) {
-        std::cout << "Sent command '" << cmd << "' to FEM " << FEM.fecMetadata.id << " with IP "
-                  << "" << std::endl;
+    if (verboseLevel >= TRestStringOutput::REST_Verbose_Level::REST_Debug) {
+        std::cout << "Sent command '" << cmd << "' to FEM " << FEM.fecMetadata.id << std::endl;
     }
     if (wait) {
         // lock.lock();
@@ -311,22 +318,26 @@ void TRESTDAQFEMINOS::SendCommand(const char* cmd, FEMProxy& FEM, bool wait) {
     }
 }
 
-void TRESTDAQFEMINOS::waitForCmd(FEMProxy& FEM) {
-    int timeout = 0;
+bool TRESTDAQFEMINOS::waitForCmd(FEMProxy& FEM, int timeoutMillis) {
     bool condition;
-
+    int timeWaitedMillis = 0;
+    int timeStepMillis = 100;
     do {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(timeStepMillis));
+        timeWaitedMillis += timeStepMillis;
         std::unique_lock<std::mutex> lock(FEM.mutex_socket);
         condition = (FEM.cmd_sent > FEM.cmd_rcv);
         lock.unlock();
-        timeout++;
-    } while (condition && timeout < 10);
+    } while (condition && timeWaitedMillis < timeoutMillis);
 
-    if (verboseLevel >= TRestStringOutput::REST_Verbose_Level::REST_Debug)
-        std::cout << "Cmd sent " << FEM.cmd_sent << " Cmd Received: " << FEM.cmd_rcv << std::endl;
-
-    if (timeout >= 10) std::cout << "Cmd timeout " << std::endl;
+    if (timeWaitedMillis >= timeoutMillis) {
+        std::cout << "Cmd '" << FEM.cmd_sent << "' timeout" << std::endl;
+        return false;
+    }
+    if (verboseLevel >= TRestStringOutput::REST_Verbose_Level::REST_Debug) {
+        std::cout << "Cmd sent '" << FEM.cmd_sent << "' Cmd Received: " << FEM.cmd_rcv << std::endl;
+    }
+    return true;
 }
 
 void TRESTDAQFEMINOS::ReceiveThread(std::vector<FEMProxy>* FEMA) {
@@ -444,4 +455,18 @@ void TRESTDAQFEMINOS::EventBuilderThread(std::vector<FEMProxy>* FEMA, TRestRun* 
             }
         }
     }
+}
+
+bool TRESTDAQFEMINOS::Ping() const {
+    bool result = true;
+    for (auto fec : GetDAQMetadata()->GetFECs()) {
+        const auto ip = fec.ip;
+        const auto ipString = to_string(ip[0]) + "." + to_string(ip[1]) + "." + to_string(ip[2]) + "." + to_string(ip[3]);
+        const string command = "ping -c1 -s1 " + ipString + " > /dev/null 2>&1";
+        if (system(command.c_str()) != 0) {
+            cout << "ping failed for ip '" << ipString << "'" << endl;
+            result = false;
+        }
+    }
+    return result;
 }

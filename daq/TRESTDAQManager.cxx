@@ -43,9 +43,9 @@ TRESTDAQManager::~TRESTDAQManager() {
 void TRESTDAQManager::startUp() {
     std::cout << __PRETTY_FUNCTION__ << std::endl;
 
-    int shareMemoryID;
+    int sharedMemoryID;
     sharedMemoryStruct* sharedMemory;
-    if (!GetSharedMemory(shareMemoryID, &sharedMemory)) return;
+    if (!GetSharedMemory(sharedMemoryID, &sharedMemory)) return;
 
     if (!TRestTools::fileExists(sharedMemory->configFilename)) {
         std::cout << "File '" << sharedMemory->configFilename << "' not found, please provide existing config file" << std::endl;
@@ -92,7 +92,7 @@ std::unique_ptr<TRESTDAQ> TRESTDAQManager::GetTRESTDAQ(TRestRun* run, TRestRawDA
     } else {
         std::cout << electronicsType << " not implemented, skipping..." << std::endl;
         cerr << "Error: Invalid electronics type " << electronicsType << endl;
-        return 1;
+        exit(1);
     }
 
     return daq;
@@ -139,7 +139,9 @@ void TRESTDAQManager::dataTaking() {
     daqMetadata.PrintMetadata();
     TString rTag = restRun.GetRunTag();
 
-    if (rTag == "Null" || rTag == "") restRun.SetRunTag(daqMetadata.GetTitle());
+    if (rTag == "Null" || rTag == "") {
+        restRun.SetRunTag(daqMetadata.GetTitle());
+    }
 
     restRun.SetRunType(daqMetadata.GetAcquisitionType());
     restRun.AddMetadata(&daqMetadata);
@@ -299,4 +301,44 @@ void TRESTDAQManager::AbortThread() {
     } while (!abrt);
 
     TRESTDAQ::abrt = true;
+}
+
+bool TRESTDAQManager::Initialize() const {
+    cout << "Initializing TRESTDAQManager. Checking for connection to DAQ" << endl;
+
+    int sharedMemoryID;
+    sharedMemoryStruct* sharedMemory;
+
+    if (!GetSharedMemory(sharedMemoryID, &sharedMemory)) {
+        cout << "Error getting shared memory" << endl;
+        return false;
+    }
+
+    if (!TRestTools::fileExists(sharedMemory->configFilename)) {
+        std::cout << "File '" << sharedMemory->configFilename << "' not found, please provide existing config file" << std::endl;
+        DetachSharedMemory(&sharedMemory);
+        return false;
+    }
+
+    TRestRawDAQMetadata daqMetadata(sharedMemory->configFilename);
+
+    sharedMemory->status = 1;
+
+    bool result = true;
+    auto daq = GetTRESTDAQ(nullptr, &daqMetadata);
+    if (daq == nullptr) {
+        std::cout << "Error while initializing DAQ" << std::endl;
+        result = false;
+    }
+    if (!daq->Ping()) {
+        cout << "Error pinging DAQ. Please check networking configuration" << endl;
+        result = false;
+    }
+    if (result) {
+        cout << "DAQ connection established" << endl;
+    } else {
+        cout << "Error establishing DAQ connection" << endl;
+    }
+    DetachSharedMemory(&sharedMemory);
+    return result;
 }
