@@ -31,7 +31,7 @@
         <parameter name="triggerType" value="external"/>
         <parameter name="acquisitionType" value="background"/>
         <parameter name="compressMode" value="1"/>
-        <parameter name="Nevents" value="10"/>
+        <parameter name="nEvents" value="0"/>
 
         <FEC id="2" ip="192:168:10:13" chip="after" clockDiv="0x2">
             <ASIC id="*" isActive="true" gain="0x1" shappingTime="0x2" polarity="0" pedcenter="250" pedthr="5.0">
