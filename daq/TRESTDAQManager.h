@@ -29,7 +29,7 @@ class TRESTDAQManager {
 
     // Shared memory
     struct sharedMemoryStruct {
-        char cfgFile[1024];
+        char configFilename[1024];
         char runType[256];
         char runName[1024];
         int startDAQ;
@@ -43,13 +43,13 @@ class TRESTDAQManager {
 
     void dataTaking();
     void startUp();
-    std::unique_ptr<TRESTDAQ> GetTRESTDAQ(TRestRun* rR, TRestRawDAQMetadata* dM);
+    static std::unique_ptr<TRESTDAQ> GetTRESTDAQ(TRestRun* run, TRestRawDAQMetadata* metadata);
 
     // Shared Memory
-    static void InitializeSharedMemory(sharedMemoryStruct* sM);
-    static void PrintSharedMemory(sharedMemoryStruct* sM);
-    static bool GetSharedMemory(int& sid, sharedMemoryStruct** sM, int flag = 0, bool verbose = true);
-    static void DetachSharedMemory(sharedMemoryStruct** sM);
+    static void InitializeSharedMemory(sharedMemoryStruct* sharedMemory);
+    static void PrintSharedMemory(sharedMemoryStruct* sharedMemory);
+    static bool GetSharedMemory(int& sharedMemoryID, sharedMemoryStruct** sharedMemory, int flag = 0, bool verbose = true);
+    static void DetachSharedMemory(sharedMemoryStruct** sharedMemory);
 
     static int GetFileSize(const std::string& filename);
 

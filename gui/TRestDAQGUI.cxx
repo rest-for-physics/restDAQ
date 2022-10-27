@@ -285,14 +285,14 @@ void TRestDAQGUI::StartPressed() {
     for (const auto& [name, t] : daq_metadata_types::acqTypes_map) {
         if (type == static_cast<int>(t)) {
             std::cout << name << std::endl;
-            sprintf(mem->runType, name.c_str());
+            sprintf(mem->runType, "%s", name.c_str());
             break;
         }
     }
 
     cfgFileName = cfgName->GetText();
     std::cout << cfgFileName << std::endl;
-    sprintf(mem->cfgFile, "%s", cfgFileName.c_str());
+    sprintf(mem->configFilename, "%s", cfgFileName.c_str());
 
     nEvents = std::atoi(nEventsEntry->GetText());
     mem->nEvents = nEvents;
@@ -339,7 +339,7 @@ void TRestDAQGUI::StartUpPressed() {
 
         cfgFileName = cfgName->GetText();
         std::cout << cfgFileName << std::endl;
-        sprintf(mem->cfgFile, "%s", cfgFileName.c_str());
+        sprintf(mem->configFilename, "%s", cfgFileName.c_str());
         mem->startUp = 1;
         TRESTDAQManager::DetachSharedMemory(&mem);
     }
@@ -438,7 +438,7 @@ void TRestDAQGUI::UpdateInputs() {
     auto rT = daq_metadata_types::acqTypes_map.find(mem->runType);
     if (rT != daq_metadata_types::acqTypes_map.end()) type = (int)rT->second;
 
-    cfgFileName = mem->cfgFile;
+    cfgFileName = mem->configFilename;
     nEvents = mem->nEvents;
 
     TRESTDAQManager::DetachSharedMemory(&mem);

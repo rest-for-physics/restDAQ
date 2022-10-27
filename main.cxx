@@ -141,25 +141,27 @@ int main(int argc, char** argv) {
             int shareMemoryID;
             TRESTDAQManager::sharedMemoryStruct* sharedMemory;
             if (!TRESTDAQManager::GetSharedMemory(shareMemoryID, &sharedMemory)) {
-                cerr << "Cannot get shared memory!!" << endl;
+                cerr << "Error accessing shared memory" << endl;
                 return 1;
             }
             char* fullPath = realpath(configFilename.c_str(), nullptr);
             if (fullPath) {
                 cout << "Full path: " << fullPath << endl;
-                sprintf(sharedMemory->cfgFile, "%s", fullPath);
+                sprintf(sharedMemory->configFilename, "%s", fullPath);
             } else {
-                sprintf(sharedMemory->cfgFile, "%s", configFilename.c_str());
+                sprintf(sharedMemory->configFilename, "%s", configFilename.c_str());
             }
             TRESTDAQManager::DetachSharedMemory(&sharedMemory);
             if (startupElectronics) {
                 cout << "Attempting electronics startup" << endl;
                 daqManager.startUp();
+                return 1;
             } else {
                 daqManager.dataTaking();
             }
         } else {
             cout << "Starting infinite loop" << endl;
+            return 1;
             daqManager.run();
         }
     }

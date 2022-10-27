@@ -23,7 +23,7 @@ To implement generic methods here
 
 class TRESTDAQ {
    public:
-    TRESTDAQ(TRestRun* rR, TRestRawDAQMetadata* dM);
+    TRESTDAQ(TRestRun* run, TRestRawDAQMetadata* sharedMemory);
     ~TRESTDAQ();
 
     // Pure virtual methods to start, stop and configure the DAQ
@@ -41,10 +41,10 @@ class TRESTDAQ {
 
     static Double_t getCurrentTime();
 
-    TRestRun* GetRestRun() { return restRun; }
-    TRestRawSignalEvent* GetSignalEvent() { return fSignalEvent; }
-    TRestRawDAQMetadata* GetDAQMetadata() { return daqMetadata; }
-    static void FillTree(TRestRun* rR, TRestRawSignalEvent* sEvent);
+    TRestRun* GetRestRun() const { return restRun; }
+    TRestRawSignalEvent* GetSignalEvent() const { return fSignalEvent; }
+    TRestRawDAQMetadata* GetDAQMetadata() const { return daqMetadata; }
+    static void FillTree(TRestRun* run, TRestRawSignalEvent* event);
 
    private:
     TRestRun* restRun;

@@ -38,17 +38,17 @@ class FEMProxy : public TRESTDAQSocket {
 
 class TRESTDAQFEMINOS : public TRESTDAQ {
    public:
-    TRESTDAQFEMINOS(TRestRun* rR, TRestRawDAQMetadata* dM);
+    TRESTDAQFEMINOS(TRestRun* run, TRestRawDAQMetadata* metadata);
 
-    virtual void configure();
-    virtual void startDAQ();
-    virtual void stopDAQ();
-    virtual void initialize();
-    virtual void startUp();
+    void configure() override;
+    void startDAQ() override;
+    void stopDAQ() override;
+    void initialize() override;
+    void startUp() override;
 
     static void ReceiveThread(std::vector<FEMProxy>* FEMA);
     static void ReceiveBuffer(FEMProxy& FEM);
-    static void EventBuilderThread(std::vector<FEMProxy>* FEMA, TRestRun* rR, TRestRawSignalEvent* sEvent);
+    static void EventBuilderThread(std::vector<FEMProxy>* FEMA, TRestRun* run, TRestRawSignalEvent* sEvent);
     static void waitForCmd(FEMProxy& FEM);
     static std::atomic<bool> stopReceiver;
 

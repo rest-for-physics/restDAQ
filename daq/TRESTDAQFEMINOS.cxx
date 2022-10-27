@@ -13,7 +13,7 @@ Author: JuanAn Garcia 18/08/2021
 
 std::atomic<bool> TRESTDAQFEMINOS::stopReceiver(false);
 
-TRESTDAQFEMINOS::TRESTDAQFEMINOS(TRestRun* rR, TRestRawDAQMetadata* dM) : TRESTDAQ(rR, dM) { initialize(); }
+TRESTDAQFEMINOS::TRESTDAQFEMINOS(TRestRun* run, TRestRawDAQMetadata* metadata) : TRESTDAQ(run, metadata) { initialize(); }
 
 void TRESTDAQFEMINOS::initialize() {
     // FEMArray.reserve(GetDAQMetadata()->GetFECs().size() );//Reserve space for all the feminos inside the FEC
@@ -33,7 +33,7 @@ void TRESTDAQFEMINOS::initialize() {
 }
 
 void TRESTDAQFEMINOS::startUp() {
-    std::cout << "Starting up readout" << std::endl;
+    std::cout << "Starting up FEMINOS" << std::endl;
     // FEC Power-down
     BroadcastCommand("power_inv 0", FEMArray);
     BroadcastCommand("fec_enable 0", FEMArray);
@@ -280,19 +280,18 @@ void TRESTDAQFEMINOS::stopDAQ() {
     receiveThread.join();
     eventBuilderThread.join();
 
-    for (auto& FEM : FEMArray) FEM.Close();
+    for (auto& FEM : FEMArray) {
+        FEM.Close();
+    }
 }
 
 void TRESTDAQFEMINOS::BroadcastCommand(const char* cmd, std::vector<FEMProxy>& FEMA, bool wait) {
     for (auto& FEM : FEMA) {
         SendCommand(cmd, FEM, wait);
     }
-
-    // if (verboseLevel >= REST_Debug)std::cout<<"Command sent "<<cmd<<std::endl;
 }
 
 void TRESTDAQFEMINOS::SendCommand(const char* cmd, FEMProxy& FEM, bool wait) {
-    // if(abrt)return;
     std::unique_lock<std::mutex> lock(FEM.mutex_socket);
     if (sendto(FEM.client, cmd, strlen(cmd), 0, (struct sockaddr*)&(FEM.target), sizeof(struct sockaddr)) == -1) {
         std::string error = "sendto failed: " + std::string(strerror(errno));
@@ -300,9 +299,10 @@ void TRESTDAQFEMINOS::SendCommand(const char* cmd, FEMProxy& FEM, bool wait) {
     }
 
     lock.unlock();
-    if (verboseLevel >= TRestStringOutput::REST_Verbose_Level::REST_Debug)
-        std::cout << "FEM " << FEM.fecMetadata.id << " Command sent " << cmd << std::endl;
-
+    if (verboseLevel >= TRestStringOutput::REST_Verbose_Level::REST_Debug || true) {
+        std::cout << "Sent command '" << cmd << "' to FEM " << FEM.fecMetadata.id << " with IP "
+                  << "" << std::endl;
+    }
     if (wait) {
         // lock.lock();
         FEM.cmd_sent++;
@@ -402,7 +402,7 @@ void TRESTDAQFEMINOS::ReceiveThread(std::vector<FEMProxy>* FEMA) {
     }
 }
 
-void TRESTDAQFEMINOS::EventBuilderThread(std::vector<FEMProxy>* FEMA, TRestRun* rR, TRestRawSignalEvent* sEvent) {
+void TRESTDAQFEMINOS::EventBuilderThread(std::vector<FEMProxy>* FEMA, TRestRun* run, TRestRawSignalEvent* sEvent) {
     sEvent->Initialize();
 
     uint32_t ev_count;
@@ -434,10 +434,10 @@ void TRESTDAQFEMINOS::EventBuilderThread(std::vector<FEMProxy>* FEMA, TRestRun* 
         }
 
         if (newEvent && !pendingEvent) {  // Save Event if closed
-            if (rR) {
+            if (run) {
                 sEvent->SetID(ev_count);
-                sEvent->SetTime(rR->GetStartTimestamp() + (double)ts * 2E-8);
-                FillTree(rR, sEvent);
+                sEvent->SetTime(run->GetStartTimestamp() + (double)ts * 2E-8);
+                FillTree(run, sEvent);
                 sEvent->Initialize();
                 newEvent = false;
                 if (event_cnt % 100 == 0) std::cout << "Events " << event_cnt << std::endl;
