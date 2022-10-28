@@ -3,31 +3,28 @@
 
 #include <cstdio>
 
-void DCCPacket::DataPacket_Print( DataPacket *pck){
-
-
+void DCCPacket::DataPacket_Print(DataPacket* pck) {
     // DCC data packet has a different structure
     if (GET_FRAME_TY_V2(ntohs(pck->dcchdr)) & FRAME_TYPE_DCC_DATA) {
         DCC_Data_Print((EndOfEventPacket*)pck);
         return;
-    } // FEM data - Pedestal Histogram Mathematics
+    }  // FEM data - Pedestal Histogram Mathematics
     else if (GET_TYPE(ntohs(pck->hdr)) == RESP_TYPE_HISTOSTAT) {
         Pedestal_PrintHistoMathPacket((PedestalHistoMathPacket*)pck);
         return;
-    } // FEM data - Pedestal Histogram Bins
+    }  // FEM data - Pedestal Histogram Bins
     else if (GET_TYPE(ntohs(pck->hdr)) == RESP_TYPE_HISTOGRAM) {
         Pedestal_PrintHistoBinPacket((PedestalHistoBinPacket*)pck);
         return;
-    } // FEM data - Pedestal Histogram Summary
+    }  // FEM data - Pedestal Histogram Summary
     else if (GET_TYPE(ntohs(pck->hdr)) == RESP_TYPE_HISTOSUMMARY) {
         Pedestal_PrintHistoSummaryPacket((PedestalHistoSummaryPacket*)pck);
         return;
-    } // FEM data - ADC samples in zero-suppressed or non zero-suppressed mode
+    }  // FEM data - ADC samples in zero-suppressed or non zero-suppressed mode
     else if (GET_TYPE(ntohs(pck->hdr)) == RESP_TYPE_ADC_DATA) {
         FemAdcDataPrint(pck);
         return;
     }
-
 }
 
 void DCCPacket::DCC_Data_Print(EndOfEventPacket* pck) {
@@ -43,7 +40,7 @@ void DCCPacket::DCC_Data_Print(EndOfEventPacket* pck) {
     }
 
     else {
-        printf("DCC_Data_Print: unknown frame type 0x%x\n", GET_FRAME_TY_V2(ntohs(pck->dcchdr) ) );
+        printf("DCC_Data_Print: unknown frame type 0x%x\n", GET_FRAME_TY_V2(ntohs(pck->dcchdr)));
     }
 }
 
@@ -82,20 +79,18 @@ void DCCPacket::DCC_Histogram_Print(HistogramPacket* pck) {
     printf("------------------------------------\n");
 }
 
-
 void DCCPacket::EndOfEvent_PrintPacket(EndOfEventPacket* eop) {
     int i;
 
     printf("------------------------------------\r\n");
     printf("Message size : %d bytes\r\n", ntohs(eop->size));
     printf("DCC Header: Type:0x%x DCC_index:0x%x FEM_index:0x%x\r\n", GET_FRAME_TY_V2(ntohs(eop->dcchdr)), GET_DCC_INDEX(ntohs(eop->dcchdr)),
-               GET_FEM_INDEX(ntohs(eop->dcchdr)));
+           GET_FEM_INDEX(ntohs(eop->dcchdr)));
     printf("FEM Header: 0x%x\r\n", ntohs(eop->hdr));
     for (i = 0; i < MAX_NB_OF_FEM_PER_DCC; i++) {
         printf("Fem(%2d)   : recv: %d bytes sent: %d bytes\r\n", i, ntohl(eop->byte_rcv[i]), ntohl(eop->byte_snd[i]));
     }
     printf("Total     : recv: %d bytes sent: %d bytes\r\n", ntohl(eop->tot_byte_rcv), ntohl(eop->tot_byte_snd));
-
 }
 
 /*******************************************************************************
@@ -105,10 +100,10 @@ void DCCPacket::Pedestal_PrintHistoMathPacket(PedestalHistoMathPacket* phm) {
     printf("------------------------------------\n");
     printf("Message size : %d bytes\n", ntohs(phm->size));
     printf("DCC Header: Type:0x%x DCC_index:0x%x FEM_index:0x%x\n", GET_FRAME_TY_V2(ntohs(phm->dcchdr)), GET_DCC_INDEX(ntohs(phm->dcchdr)),
-               GET_FEM_INDEX(ntohs(phm->dcchdr)));
+           GET_FEM_INDEX(ntohs(phm->dcchdr)));
     printf("FEM Header: 0x%x\n", ntohs(phm->hdr)),
         printf("Read-back : Mode:%d Compress:%d Arg1:0x%x Arg2:0x%x\n", GET_RB_MODE(ntohs(phm->args)), GET_RB_COMPRESS(ntohs(phm->args)),
-                   GET_RB_ARG1(ntohs(phm->args)), GET_RB_ARG2(ntohs(phm->args)));
+               GET_RB_ARG1(ntohs(phm->args)), GET_RB_ARG2(ntohs(phm->args)));
 
     printf("Bin min   : %d\n", ntohs(phm->min_bin));
     printf("Bin max   : %d\n", ntohs(phm->max_bin));
@@ -135,7 +130,7 @@ void DCCPacket::Pedestal_PrintHistoBinPacket(PedestalHistoBinPacket* pck) {
     printf("------------------------------------\n");
     printf("Message size : %d bytes\n", ntohs(pck->size));
     printf("DCC Header   : Type:0x%x DCC_index:0x%x FEM_index:0x%x\n", GET_FRAME_TY_V2(ntohs(pck->dcchdr)), GET_DCC_INDEX(ntohs(pck->dcchdr)),
-               GET_FEM_INDEX(ntohs(pck->dcchdr)));
+           GET_FEM_INDEX(ntohs(pck->dcchdr)));
 
     printf("FEM Header   : Msg_type:0x%x Index:0x%x\n", GET_RESP_TYPE(ntohs(pck->hdr)));
     printf("Read-back    : Arg1:0x%x Arg2:0x%x\n", GET_RB_ARG1(ntohs(pck->args)), GET_RB_ARG2(ntohs(pck->args)));
@@ -165,7 +160,7 @@ void DCCPacket::Pedestal_PrintHistoSummaryPacket(PedestalHistoSummaryPacket* pck
     printf("------------------------------------\n");
     printf("Message size : %d bytes\n", ntohs(pck->size));
     printf("DCC Header   : Type:0x%x DCC_index:0x%x FEM_index:0x%x\n", GET_FRAME_TY_V2(ntohs(pck->dcchdr)), GET_DCC_INDEX(ntohs(pck->dcchdr)),
-               GET_FEM_INDEX(ntohs(pck->dcchdr)));
+           GET_FEM_INDEX(ntohs(pck->dcchdr)));
 
     printf("FEM Header   : Msg_type:0x%x Index:0x%x\n", GET_RESP_TYPE(ntohs(pck->hdr)));
     printf("Read-back    : Arg1:0x%x Arg2:0x%x\n", GET_RB_ARG1(ntohs(pck->args)), GET_RB_ARG2(ntohs(pck->args)));
@@ -180,7 +175,7 @@ void DCCPacket::Pedestal_PrintHistoSummaryPacket(PedestalHistoSummaryPacket* pck
 
     for (i = 0; i < (nbsw / 2); i++) {
         printf("Stat   (%3d) : mean = %.2f  stdev = %.2f\n", i, ((double)(ntohs(pck->stat[i].mean))) / 100.0,
-                   ((double)(ntohs(pck->stat[i].stdev))) / 100.0);
+               ((double)(ntohs(pck->stat[i].stdev))) / 100.0);
     }
     printf("------------------------------------\n");
 }
@@ -200,21 +195,21 @@ void DCCPacket::FemAdcDataPrint(DataPacket* pck) {
     printf("------------------------------------\n");
     printf("Packet sz : %d bytes\n", (ntohs(pck->size)));
     printf("DCC Header: Type:0x%x DCC_index:0x%x FEM_index:0x%x\n", GET_FRAME_TY_V2(ntohs(pck->dcchdr)), GET_DCC_INDEX(ntohs(pck->dcchdr)),
-               GET_FEM_INDEX(ntohs(pck->dcchdr)));
+           GET_FEM_INDEX(ntohs(pck->dcchdr)));
 
     printf("FEM Header: Msg_type:0x%x Index:0x%x\n", GET_RESP_TYPE(ntohs(pck->hdr)), GET_RESP_INDEX(ntohs(pck->hdr)));
     printf("Errors    : FEC:0x%x Unable to SYNCH:%d Framing LOS:%d\n", GET_FEC_ERROR(ntohs(pck->hdr)), GET_SYNCH_FAIL(ntohs(pck->hdr)),
-               GET_LOS_FLAG(ntohs(pck->hdr)));
+           GET_LOS_FLAG(ntohs(pck->hdr)));
     printf("Read-back : Mode:%d Compress:%d Arg1:0x%x Arg2:0x%x\n", GET_RB_MODE(ntohs(pck->args)), GET_RB_COMPRESS(ntohs(pck->args)),
-               GET_RB_ARG1(ntohs(pck->args)), GET_RB_ARG2(ntohs(pck->args)));
+           GET_RB_ARG1(ntohs(pck->args)), GET_RB_ARG2(ntohs(pck->args)));
 
-    Arg12ToFecAsicChannel((unsigned short)GET_RB_ARG1(ntohs(pck->args)), (unsigned short)GET_RB_ARG2(ntohs(pck->args)), fec, asic,channel);
+    Arg12ToFecAsicChannel((unsigned short)GET_RB_ARG1(ntohs(pck->args)), (unsigned short)GET_RB_ARG2(ntohs(pck->args)), fec, asic, channel);
 
     printf("            Fec:%d Asic:%d Channel:%d\n", fec, asic, channel);
 
     ts = (((int)ntohs((pck->ts_h))) << 16) | (int)ntohs((pck->ts_l));
     printf("Event     : Type:%d Count:%d Time:0x%x NbOfWords:%d\n", GET_EVENT_TYPE(ntohs(pck->ecnt)), GET_EVENT_COUNT(ntohs(pck->ecnt)), ts,
-               ntohs(pck->scnt));
+           ntohs(pck->scnt));
     scnt = ntohs(pck->scnt) & 0x7FF;
 
     // Compute the number of short words in the packet
@@ -247,8 +242,7 @@ void DCCPacket::FemAdcDataPrint(DataPacket* pck) {
 /*******************************************************************************
  Arg12ToFecAsicChannel
 *******************************************************************************/
-int DCCPacket::Arg12ToFecAsicChannel(unsigned short arg1, unsigned short arg2, unsigned short &fec, unsigned short &asic, unsigned short  &channel) {
-
+int DCCPacket::Arg12ToFecAsicChannel(unsigned short arg1, unsigned short arg2, unsigned short& fec, unsigned short& asic, unsigned short& channel) {
     fec = (10 * (arg1 % 6) / 2 + arg2) / 4;
     asic = (10 * (arg1 % 6) / 2 + arg2) % 4;
     channel = arg1 / 6;
@@ -279,5 +273,3 @@ int DCCPacket::Arg12ToFecAsicChannel(unsigned short arg1, unsigned short arg2, u
 
     return physChannel;
 }
-
-

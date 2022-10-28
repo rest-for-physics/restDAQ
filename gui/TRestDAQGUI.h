@@ -24,6 +24,8 @@
 #include <TH2Poly.h>
 #include <TObject.h>
 #include <TPaveText.h>
+#include <TRestDAQGUIMetadata.h>
+#include <TRestRawSignalEvent.h>
 #include <TRootEmbeddedCanvas.h>
 #include <TStyle.h>
 #include <TSystem.h>
@@ -31,20 +33,15 @@
 #include <TTimeStamp.h>
 #include <TTree.h>
 #include <TVirtualX.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
-
-#include "TRestRawSignalEvent.h"
-#include "TRestDAQGUIMetadata.h"
 #ifdef REST_DetectorLib
 #include "TRestDetectorReadout.h"
 #endif
 
-
-constexpr int PLOTS_UPDATE_TIME = 5;//Seconds to update the plots
-constexpr int SLEEP_TIME = 500;//Miliseconds to sleep
+constexpr int PLOTS_UPDATE_TIME = 5;  // Seconds to update the plots
+constexpr int SLEEP_TIME = 500;       // Milliseconds to sleep
 
 class TRestDAQGUI {
    public:
@@ -52,12 +49,12 @@ class TRestDAQGUI {
     TGVerticalFrame* fVLeft;
     static inline TGTextButton *startButton, *stopButton, *quitButton, *cfgButton, *startUpButton;
     TGLabel *runLabel, *cfgLabel, *typeLabel, *nEventsLabel;
-    static inline TGLabel *statusLabel,*counterLabel, *rateLabel;
-    static inline TGTextEntry* runName, *cfgName, *nEventsEntry;
+    static inline TGLabel *statusLabel, *counterLabel, *rateLabel;
+    static inline TGTextEntry *runName, *cfgName, *nEventsEntry;
 
     static inline TGComboBox* typeCombo;
 
-    static inline TRestDAQGUIMetadata *guiMetadata;
+    static inline TRestDAQGUIMetadata* guiMetadata;
 
     TGFileContainer* fContents;
     TGTransientFrame* cfgMain;
@@ -83,7 +80,7 @@ class TRestDAQGUI {
 
     std::thread updateT, readerT;
 
-    TRestDAQGUI(const int& p, const int& q, TRestDAQGUIMetadata *mt);
+    TRestDAQGUI(const int& p, const int& q, TRestDAQGUIMetadata* mt);
     ~TRestDAQGUI();  // need to delete here created widgets
 
     void SetInputs();
@@ -95,12 +92,12 @@ class TRestDAQGUI {
     void ReadCfgFileName();
     void VerifyEventsEntry();
 
-    void CloseCfgWindow(){
-      if(cfgMain)delete cfgMain;
+    void CloseCfgWindow() {
+        if (cfgMain) delete cfgMain;
     }
 
-    void CloseStartUpWindow(){
-      if(startUpMain)delete startUpMain;
+    void CloseStartUpWindow() {
+        if (startUpMain) delete startUpMain;
     }
 
     void LoadLastSettings();
@@ -123,7 +120,7 @@ class TRestDAQGUI {
     static void AnalyzeEvent(TRestRawSignalEvent* fEvent, double& oldTimeUpdate);
     static void UpdateRate(const double& currentTimeEv, double& oldTimeEv, const int& currentEventCount, int& oldEventCount);
 
-    static bool GetDAQManagerParams(double &lastTimeUpdate);
+    static bool GetDAQManagerParams(double& lastTimeUpdate);
 
     const std::string lastSetFile = "DAQLastSettings.txt";
     static std::atomic<bool> exitGUI;
@@ -131,9 +128,9 @@ class TRestDAQGUI {
 
     static void FillHitmap(const std::map<int, int>& hmap);
 
-    #ifdef REST_DetectorLib
+#ifdef REST_DetectorLib
     static inline TRestDetectorReadout* fReadout = nullptr;
-    #endif
+#endif
 
     ClassDef(TRestDAQGUI, 1)
 };

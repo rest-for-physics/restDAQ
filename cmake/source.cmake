@@ -1,0 +1,17 @@
+set(FILENAME ${CMAKE_BINARY_DIR}/source.sh)
+
+file(WRITE ${FILENAME})
+file(APPEND ${FILENAME} "#!/bin/bash\n\n")
+
+execute_process(COMMAND rest-config --prefix OUTPUT_VARIABLE REST_PREFIX)
+string(REGEX REPLACE "\n$" "" REST_PREFIX ${REST_PREFIX})
+file(APPEND ${FILENAME} "source ${REST_PREFIX}/thisREST.sh\n")
+
+file(APPEND ${FILENAME} "\n")
+
+file(APPEND ${FILENAME} "export PATH=${CMAKE_INSTALL_PREFIX}/bin:$PATH\n")
+file(APPEND ${FILENAME} "export LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib:$LD_LIBRARY_PATH\n")
+
+file(APPEND ${FILENAME} "\n")
+
+install(FILES ${FILENAME} DESTINATION ${CMAKE_INSTALL_PREFIX})
