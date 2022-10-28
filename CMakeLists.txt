@@ -40,8 +40,11 @@ message(STATUS "Package ${PROJECT_NAME} will be installed in ${CMAKE_INSTALL_PRE
 
 #-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 #Set include and lib
+set(INCLUDE_DIRS ${ROOT_INCLUDE_DIRS} ${REST_INCLUDE_DIRS})
 
-set(INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/include ${ROOT_INCLUDE_DIRS} ${REST_INCLUDE_DIRS})
+if (NOT ${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME})
+    set(INCLUDE_DIRS ${INCLUDE_DIRS} ${rest_include_dirs})
+endif ()
 
 set(LINK_LIBRARIES ${ROOT_LIBRARIES} RestRaw)
 string(STRIP "${LINK_LIBRARIES}" LINK_LIBRARIES)
