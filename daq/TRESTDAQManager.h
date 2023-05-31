@@ -14,6 +14,7 @@ Control data acquisition via shared memory, should be always running
 
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <sys/stat.h>
 
 #include <iostream>
 #include <string>

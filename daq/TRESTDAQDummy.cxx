@@ -32,7 +32,7 @@ void TRESTDAQDummy::startDAQ() {
         for (int s = 0; s < 10; s++) {
             std::vector<Short_t> sData(512, 250);
             double factor = rand() * 3. / RAND_MAX;
-            for (int i = 0; i < pulseSample.size(); i++) {
+            for (size_t i = 0; i < pulseSample.size(); i++) {
                 int timeBin = i + 200;
                 sData[timeBin] += pulseSample[i] * factor;
             }

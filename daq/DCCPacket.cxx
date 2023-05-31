@@ -137,7 +137,7 @@ void DCCPacket::Pedestal_PrintHistoBinPacket(PedestalHistoBinPacket* pck) {
     printf("DCC Header   : Type:0x%x DCC_index:0x%x FEM_index:0x%x\n", GET_FRAME_TY_V2(ntohs(pck->dcchdr)), GET_DCC_INDEX(ntohs(pck->dcchdr)),
                GET_FEM_INDEX(ntohs(pck->dcchdr)));
 
-    printf("FEM Header   : Msg_type:0x%x Index:0x%x\n", GET_RESP_TYPE(ntohs(pck->hdr)));
+    printf("FEM Header   : Msg_type:0x%x\n", GET_RESP_TYPE(ntohs(pck->hdr)));
     printf("Read-back    : Arg1:0x%x Arg2:0x%x\n", GET_RB_ARG1(ntohs(pck->args)), GET_RB_ARG2(ntohs(pck->args)));
     printf("NbOfWords    : %d\n", ntohs(pck->scnt));
 
@@ -167,7 +167,7 @@ void DCCPacket::Pedestal_PrintHistoSummaryPacket(PedestalHistoSummaryPacket* pck
     printf("DCC Header   : Type:0x%x DCC_index:0x%x FEM_index:0x%x\n", GET_FRAME_TY_V2(ntohs(pck->dcchdr)), GET_DCC_INDEX(ntohs(pck->dcchdr)),
                GET_FEM_INDEX(ntohs(pck->dcchdr)));
 
-    printf("FEM Header   : Msg_type:0x%x Index:0x%x\n", GET_RESP_TYPE(ntohs(pck->hdr)));
+    printf("FEM Header   : Msg_type:0x%x\n", GET_RESP_TYPE(ntohs(pck->hdr)));
     printf("Read-back    : Arg1:0x%x Arg2:0x%x\n", GET_RB_ARG1(ntohs(pck->args)), GET_RB_ARG2(ntohs(pck->args)));
     printf("NbOfWords    : %d\n", ntohs(pck->scnt));
 
@@ -191,7 +191,6 @@ void DCCPacket::Pedestal_PrintHistoSummaryPacket(PedestalHistoSummaryPacket* pck
 void DCCPacket::FemAdcDataPrint(DataPacket* pck) {
     unsigned short i;
     unsigned int ts;
-    unsigned short scnt;
     unsigned short samp;
     short nbsw;
     unsigned int tmp;
@@ -215,7 +214,6 @@ void DCCPacket::FemAdcDataPrint(DataPacket* pck) {
     ts = (((int)ntohs((pck->ts_h))) << 16) | (int)ntohs((pck->ts_l));
     printf("Event     : Type:%d Count:%d Time:0x%x NbOfWords:%d\n", GET_EVENT_TYPE(ntohs(pck->ecnt)), GET_EVENT_COUNT(ntohs(pck->ecnt)), ts,
                ntohs(pck->scnt));
-    scnt = ntohs(pck->scnt) & 0x7FF;
 
     // Compute the number of short words in the packet
     // Must subtract:

@@ -19,8 +19,6 @@ void TRESTDAQFEMINOS::initialize() {
 
     //FEMArray.reserve(GetDAQMetadata()->GetFECs().size() );//Reserve space for all the feminos inside the FEC
 
-    int *baseIp = GetDAQMetadata()->GetBaseIp();
-
     for(auto fec : GetDAQMetadata()->GetFECs()){
         FEMProxy FEM;
         FEM.Open(fec.ip, GetDAQMetadata()->GetLocalIp(), REMOTE_DST_PORT);
@@ -136,9 +134,9 @@ void TRESTDAQFEMINOS::configure() {
             SendCommand(cmd,FEM);
              for(int c=0;c<78;c++){
                if(FEM.fecMetadata.asic_channelActive[a][c])continue;
-               sprintf(cmd,"forceoff %d %d 0x1",a);
+               sprintf(cmd,"forceoff %d %d 0x1",a,c);
                SendCommand(cmd,FEM);
-               sprintf(cmd,"forceon %d %d 0x0",a);
+               sprintf(cmd,"forceon %d %d 0x0",a,c);
                SendCommand(cmd,FEM);
              }
         }

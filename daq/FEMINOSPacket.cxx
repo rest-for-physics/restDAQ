@@ -289,7 +289,6 @@ bool FEMINOSPacket::GetNextEvent(std::deque <uint16_t> &buffer, TRestRawSignalEv
   int physChannel;
   //std::cout<<__PRETTY_FUNCTION__<<"  "<<buffer.size()<<std::endl;
   while (!endOfEvent && !buffer.empty()){
-    bool done = false;
     //std::cout<<"Val 0x"<<std::hex<<buffer.front()<<std::dec<<" " <<buffer.front()<<std::endl;
 
     //TimeStamp and Event Count, once for every event

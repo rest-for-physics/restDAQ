@@ -188,7 +188,7 @@ void TRESTDAQDCC::saveEvent(unsigned char* buf, int size) {
 
    unsigned short timeBin = 0;
 
-      for (int i = 0; i < scnt && i<511; i++) {
+      for (unsigned int i = 0; i < scnt && i<511; i++) {
         Short_t data = ntohs(dp->samp[i]);
           if (((data & 0xFE00) >> 9) == 8) {
               timeBin = GET_CELL_INDEX(data);
@@ -216,10 +216,9 @@ DCCPacket::packetReply TRESTDAQDCC::SendCommand(const char* cmd, DCCPacket::pack
 
     // wait for incoming messages
     bool done = false;
-    int pckCnt = 1;
+    size_t pckCnt = 1;
     uint8_t buf_rcv[8192];
     uint8_t* buf_ual;
-    DCCPacket::packetReply errRep = DCCPacket::packetReply::OK;
 
     while (!done) {
         int length;
