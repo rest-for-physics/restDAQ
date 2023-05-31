@@ -23,10 +23,9 @@ Based on mclient program from Denis Calvet
 class FEMProxy : public TRESTDAQSocket {
   
   public:
-      FEMProxy(){
-      }
+    FEMProxy(){ }
     bool pendingEvent=false;
-    FECMetadata fecMetadata;
+    TRestRawDAQMetadata::FECMetadata fecMetadata;
     //std::atomic_int
     int cmd_sent=0;
     //std::atomic_int
