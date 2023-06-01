@@ -42,7 +42,7 @@ void TRESTDAQDCC::configure() {
       } else {
         SendCommand("pokes 0x14 0xc00");  // Set SCA readback offset
       }
-    int pk = 0xffc0 | FECMask;
+    int pk = 0xffc0 | ~FECMask;
     sprintf(cmd, "pokeb 0x4 0x%X", pk);  // Set FEC mask, note that is inverted
     SendCommand(cmd);
     // SendCommand("pokeb 0x5 0x0",-1);//Deplecated?
@@ -91,8 +91,10 @@ void TRESTDAQDCC::pedestal() {
     SendCommand("pokes 0x14 0x0");  // Set SCA readback offset
     SendCommand("hbusy clr");
     SendCommand("fem 0");
-    sprintf(cmd, "hped clr %d:%d * *", startFEC, endFEC);
-    SendCommand(cmd);            ////Clear pedestals
+    for(auto fec : GetDAQMetadata()->GetFECs()) {
+      sprintf(cmd, "hped clr %d * *", fec.id);
+      SendCommand(cmd);            ////Clear pedestals
+    }
     SendCommand("isobus 0x4F");  // Reset event counter, timestamp for type 10
 
     int loopN = 0;
