@@ -41,11 +41,11 @@ class TRESTDAQFEMINOS : public TRESTDAQ {
   public:
     TRESTDAQFEMINOS(TRestRun* rR, TRestRawDAQMetadata* dM);
 
-    virtual void configure();
-    virtual void startDAQ();
-    virtual void stopDAQ();
-    virtual void initialize();
-    virtual void startUp();
+    void configure() override;
+    void startDAQ() override;
+    void stopDAQ() override;
+    void initialize() override;
+    void startUp() override;
 
     static void ReceiveThread(std::vector<FEMProxy> *FEMA);
     static void ReceiveBuffer(FEMProxy &FEM);

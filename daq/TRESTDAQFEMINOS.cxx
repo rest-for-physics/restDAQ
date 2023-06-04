@@ -17,18 +17,32 @@ TRESTDAQFEMINOS::TRESTDAQFEMINOS(TRestRun* rR, TRestRawDAQMetadata* dM) : TRESTD
 
 void TRESTDAQFEMINOS::initialize() {
 
-    //FEMArray.reserve(GetDAQMetadata()->GetFECs().size() );//Reserve space for all the feminos inside the FEC
-
-    for(auto fec : GetDAQMetadata()->GetFECs()){
+    for(auto fec : daqMetadata->GetFECs()){
         FEMProxy FEM;
-        FEM.Open(fec.ip, GetDAQMetadata()->GetLocalIp(), REMOTE_DST_PORT);
+        FEM.Open(fec.ip, REMOTE_DST_PORT);
         FEM.fecMetadata = fec;
         FEMArray.emplace_back(std::move(FEM));
     }
 
+    for (auto &FEM : FEMArray){
+      auto cT = daq_metadata_types::chipTypes_map.find(FEM.fecMetadata.chipType.Data());
+        if(cT == daq_metadata_types::chipTypes_map.end() ){
+          std::cerr << "Unknown chip type for FEC id "<< FEM.fecMetadata.id <<" " << FEM.fecMetadata.chipType.Data() << std::endl;
+          std::cerr << "Valid chip types "<< std::endl;
+            for(const auto &[type, chip] : daq_metadata_types::chipTypes_map){
+              std::cerr << type <<" ["<< (int)chip <<"], \t";
+            }
+          std::cerr << std::endl;
+          throw (TRESTDAQException("Unknown chip type, please check RML"));
+       } else if (cT->second != daq_metadata_types::chipTypes::AGET){
+         std::cerr << "Unsupported chip type for FEC id "<< FEM.fecMetadata.id <<" " << FEM.fecMetadata.chipType.Data() << std::endl;
+         throw (TRESTDAQException("Unsupported chip type, please check RML"));
+       }
+    }
+
   //Start receive and event builder threads
   receiveThread = std::thread( TRESTDAQFEMINOS::ReceiveThread, &FEMArray);
-  eventBuilderThread = std::thread( TRESTDAQFEMINOS::EventBuilderThread, &FEMArray, GetRestRun(),GetSignalEvent());
+  eventBuilderThread = std::thread( TRESTDAQFEMINOS::EventBuilderThread, &FEMArray, restRun, &fSignalEvent);
 }
 
 void TRESTDAQFEMINOS::startUp(){
@@ -55,7 +69,7 @@ void TRESTDAQFEMINOS::startUp(){
       sprintf(cmd, "mode %s", FEM.fecMetadata.chipType.Data());
       SendCommand(cmd,FEM);
       uint8_t asicMask =0;
-        for(int a=0;a<4;a++){
+        for(int a=0;a<TRestRawDAQMetadata::nAsics;a++){
             if(!FEM.fecMetadata.asic_isActive[a]){
               asicMask |= (1 << a);
               continue;
@@ -84,15 +98,12 @@ void TRESTDAQFEMINOS::configure() {
   BroadcastCommand("sca cnt 0x200",FEMArray);
   BroadcastCommand("sca autostart 1",FEMArray);
   BroadcastCommand("rst_len 0",FEMArray);
-    //AGET settings
-    for (auto &FEM : FEMArray){
-      if(FEM.fecMetadata.chipType != "aget"){
-        std::string error = std::string(FEM.fecMetadata.chipType) +" mode not supported in FEMINOS cards";
-        throw (TRESTDAQException(error));
-      }
 
+
+   //AGET settings
+   for (auto &FEM : FEMArray){
       SendCommand("aget * autoreset_bank 0x1",FEM);
-        for(int a=0;a<4;a++){
+        for(int a=0;a<TRestRawDAQMetadata::nAsics;a++){
           if(!FEM.fecMetadata.asic_isActive[a])continue;
             if(FEM.fecMetadata.asic_polarity[a] == 0){
               sprintf(cmd, "aget %d vicm 0x1", a);
@@ -105,7 +116,7 @@ void TRESTDAQFEMINOS::configure() {
               sprintf(cmd, "aget %d polarity 0x1", a);
               SendCommand(cmd,FEM);
             }
-        }
+         }
 
       SendCommand("aget * en_mkr_rst 0x0",FEM);
       SendCommand("aget * rst_level 0x1",FEM);
@@ -113,7 +124,7 @@ void TRESTDAQFEMINOS::configure() {
       SendCommand("aget * tst_digout 0x1",FEM);
       SendCommand("aget * mode 0x1",FEM);
 
-        for(int a=0;a<4;a++){
+        for(int a=0;a<TRestRawDAQMetadata::nAsics;a++){
           if(!FEM.fecMetadata.asic_isActive[a])continue;
           sprintf(cmd, "aget %d gain * 0x%X",a, (FEM.fecMetadata.asic_gain[a] & 0x3) ); //Gain
           SendCommand(cmd,FEM);
@@ -126,13 +137,13 @@ void TRESTDAQFEMINOS::configure() {
       SendCommand("forceon_all 1",FEM);
       SendCommand("forceoff * * 0x1",FEM);
       SendCommand("forceon * * 0x0",FEM);
-        for(int a=0;a<4;a++){
+        for(int a=0;a<TRestRawDAQMetadata::nAsics;a++){
           if(!FEM.fecMetadata.asic_isActive[a])continue;
             sprintf(cmd,"forceoff %d * 0x0",a);
             SendCommand(cmd,FEM);
             sprintf(cmd,"forceon %d * 0x1",a);
             SendCommand(cmd,FEM);
-             for(int c=0;c<78;c++){
+             for(int c=0;c<TRestRawDAQMetadata::nChannels;c++){
                if(FEM.fecMetadata.asic_channelActive[a][c])continue;
                sprintf(cmd,"forceoff %d %d 0x1",a,c);
                SendCommand(cmd,FEM);
@@ -144,9 +155,9 @@ void TRESTDAQFEMINOS::configure() {
 }
 
 void TRESTDAQFEMINOS::startDAQ() {
-    auto rT = daq_metadata_types::acqTypes_map.find(std::string(GetDAQMetadata()->GetAcquisitionType()));
+    auto rT = daq_metadata_types::acqTypes_map.find(std::string(daqMetadata->GetAcquisitionType()));
     if (rT == daq_metadata_types::acqTypes_map.end()) {
-        std::cout << "Unknown acquisition type " << GetDAQMetadata()->GetAcquisitionType() << " skipping" << std::endl;
+        std::cout << "Unknown acquisition type " << daqMetadata->GetAcquisitionType() << " skipping" << std::endl;
         std::cout << "Valid acq types:" << std::endl;
         for (auto& [name, t] : daq_metadata_types::acqTypes_map) std::cout << (int)t << " " << name << std::endl;
         return;
@@ -209,7 +220,7 @@ void TRESTDAQFEMINOS::pedestal() {
   std::this_thread::sleep_for(std::chrono::seconds(15));// Wait pedestal accumulation completion
   BroadcastCommand("sca enable 0",FEMArray);
     for (auto &FEM : FEMArray){
-      for(int a=0;a<4;a++){
+      for(int a=0;a<TRestRawDAQMetadata::nAsics;a++){
         if(!FEM.fecMetadata.asic_isActive[a])continue;
         sprintf(cmd, "hped getsummary %d *", a );
         SendCommand(cmd,FEM);
@@ -239,33 +250,57 @@ void TRESTDAQFEMINOS::dataTaking() {
   BroadcastCommand("keep_rst 1",FEMArray);
   BroadcastCommand("skip_rst 0",FEMArray);
   //AGET settings
-    if( GetDAQMetadata()->GetChipType() == "aget"){
+    if(compressMode == daq_metadata_types::compressModeTypes::ALLCHANNELS || compressMode == daq_metadata_types::compressModeTypes::ZEROSUPPRESSION){
       BroadcastCommand("aget * mode 0x1",FEMArray);//Mode: 0x0: hit/selected channels 0x1:all channels
-      BroadcastCommand("aget * tst_digout 1",FEMArray);//??
+    } else if(compressMode == daq_metadata_types::compressModeTypes::TRIGGEREDCHANNELS){
+      BroadcastCommand("aget * mode 0x0",FEMArray);//Mode: 0x0: hit/selected channels 0x1:all channels
+    
     }
-    BroadcastCommand("subtract_ped 1",FEMArray);
-    if(GetDAQMetadata()->GetCompressMode()){
+  BroadcastCommand("aget * tst_digout 1",FEMArray);//??
+  
+  BroadcastCommand("subtract_ped 1",FEMArray);
+
+    if(compressMode == daq_metadata_types::compressModeTypes::ZEROSUPPRESSION){
       BroadcastCommand("zero_suppress 1",FEMArray);
       BroadcastCommand("zs_pre_post 8 4",FEMArray);
     } else {
       BroadcastCommand("zero_suppress 0",FEMArray);
-      BroadcastCommand("zs_pre_post 0 0",FEMArray);
+      BroadcastCommand("zs_pre_post 8 4",FEMArray);
     }
+
     //Event generator
     BroadcastCommand("clr tstamp",FEMArray);
     BroadcastCommand("clr evnct",FEMArray);
     BroadcastCommand("event_limit 0x0",FEMArray);//Infinite
-      if (GetDAQMetadata()->GetTriggerType() == "internal"){
+      if (triggerType ==  daq_metadata_types::triggerTypes::INTERNAL){
         BroadcastCommand("trig_rate 1 50",FEMArray);
         BroadcastCommand("trig_enable 0x1",FEMArray);
-      } else {
+      } else if (triggerType ==  daq_metadata_types::triggerTypes::TCM) {
         BroadcastCommand("trig_enable 0x8",FEMArray);//tcm???
+      } else if (triggerType ==  daq_metadata_types::triggerTypes::AUTO) {
+        BroadcastCommand("trig_enable 0x0",FEMArray);
       }
+
+    for (auto &FEM : FEMArray){
+      char cmd[200];
+        for(int a=0;a<TRestRawDAQMetadata::nAsics;a++){
+          if(!FEM.fecMetadata.asic_isActive[a])continue;
+          sprintf(cmd, "aget %d dac 0x%X",a, FEM.fecMetadata.asic_coarseThr[a]);
+          SendCommand(cmd,FEM);
+          sprintf(cmd, "aget %d threshold 0x%X",a, FEM.fecMetadata.asic_fineThr[a]);
+          SendCommand(cmd,FEM);
+          sprintf(cmd, "aget %d mult_thr %d",a, FEM.fecMetadata.asic_multThr[a]);
+          SendCommand(cmd,FEM);
+          sprintf(cmd, "aget %d mult_limit %d",a, FEM.fecMetadata.asic_multLimit[a]);
+          SendCommand(cmd,FEM);
+        }
+    }
+
     BroadcastCommand("serve_target 1",FEMArray);//1: send to DAQ
     BroadcastCommand("sca enable 1",FEMArray);//Enable data taking
     BroadcastCommand("daq 0xFFFFFE F",FEMArray, false);//DAQ request
       //Wait till DAQ completion
-      while (!abrt && (GetDAQMetadata()->GetNEvents() == 0 || event_cnt < GetDAQMetadata()->GetNEvents())) {
+      while (!abrt && (daqMetadata->GetNEvents() == 0 || event_cnt < daqMetadata->GetNEvents())) {
         //Do something here? E.g. send packet request
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
       }
@@ -448,13 +483,12 @@ void TRESTDAQFEMINOS::EventBuilderThread(std::vector<FEMProxy> *FEMA, TRestRun *
         if(rR){
           sEvent->SetID(ev_count);
           sEvent->SetTime( rR->GetStartTimestamp() + (double) ts * 2E-8 );
-          FillTree(rR,sEvent);
+          FillTree(rR, sEvent);
           sEvent->Initialize();
-          newEvent =false;
+          newEvent = false;
           if(event_cnt%100 == 0)std::cout<<"Events "<<event_cnt<<std::endl;
         }
       }
-
   }
 
 }
