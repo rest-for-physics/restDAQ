@@ -20,26 +20,21 @@ class TRESTDAQDCC : public TRESTDAQ {
    public:
     TRESTDAQDCC(TRestRun* rR, TRestRawDAQMetadata* dM);
 
-    virtual void configure();
-    virtual void startDAQ();
-    virtual void stopDAQ();
-    virtual void initialize();
+    void configure() override;
+    void startDAQ() override;
+    void stopDAQ() override;
+    void initialize() override;
 
    private:
     void pedestal();
     void dataTaking();
-    DCCPacket::packetReply SendCommand(const char* cmd, DCCPacket::packetType type = DCCPacket::packetType::ASCII, size_t nPackets = 0);
+    DCCPacket::packetReply SendCommand(const char* cmd, DCCPacket::packetType type = DCCPacket::packetType::ASCII, size_t nPackets = 0, DCCPacket::packetDataType dataType = DCCPacket::packetDataType::NONE);
 
     void waitForTrigger();
     void saveEvent(unsigned char* buf, int size);
+    void savePedestals(unsigned char* buf, int size);
 
-    uint16_t FECMask=0;
-
-    int startFEC;
-    int endFEC;
-    int chStart=3;
-    int chEnd=78;
-    int nFECs=0;
+    uint16_t FECMask = 0;
 
     // Socket
     TRESTDAQSocket dcc_socket;
