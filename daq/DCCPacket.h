@@ -164,6 +164,7 @@ namespace DCCPacket {
 
   enum class packetReply { ERROR = -1, RETRY = 0, OK = 1 };
   enum class packetType { ASCII = 0, BINARY = 1 };
+  enum class packetDataType { NONE = 0, EVENT = 1, PEDESTAL = 2 };
 
   void DataPacket_Print( DataPacket *pck);
   void DCC_Data_Print(EndOfEventPacket* pck);
