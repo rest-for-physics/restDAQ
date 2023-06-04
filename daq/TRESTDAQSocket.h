@@ -27,7 +27,7 @@ class TRESTDAQSocket {
 
     void Close();
     void Clear();
-    void Open(int* rem_ip_base, int* loc_ip, int rpt);
+    void Open(int* rem_ip_base, int rpt);
 };
 
 #endif

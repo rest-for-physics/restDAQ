@@ -24,10 +24,10 @@ void TRESTDAQDummy::configure() { std::cout << "Configuring readout" << std::end
 void TRESTDAQDummy::startDAQ() {
     std::srand(static_cast<unsigned int>(std::time(nullptr)));
 
-    while (!abrt && (GetDAQMetadata()->GetNEvents() == 0 || event_cnt < GetDAQMetadata()->GetNEvents())) {
-        GetSignalEvent()->Initialize();
-        GetSignalEvent()->SetID(event_cnt);
-        GetSignalEvent()->SetTime(getCurrentTime());
+    while ( (!abrt && daqMetadata->GetNEvents() == 0) || event_cnt < daqMetadata->GetNEvents() ) {
+        fSignalEvent.Initialize();
+        fSignalEvent.SetID(event_cnt);
+        fSignalEvent.SetTime(getCurrentTime());
         int physChannel = rand() * 140. / RAND_MAX;
         for (int s = 0; s < 10; s++) {
             std::vector<Short_t> sData(512, 250);
@@ -39,11 +39,11 @@ void TRESTDAQDummy::startDAQ() {
             // std::cout<<physChannel<<std::endl;
             if (s == 5) physChannel = rand() * 140. / RAND_MAX + 144;
             TRestRawSignal rawSignal(physChannel % 288, sData);
-            GetSignalEvent()->AddSignal(rawSignal);
+            fSignalEvent.AddSignal(rawSignal);
             physChannel++;
         }
 
-        FillTree(GetRestRun(),GetSignalEvent());
+        FillTree(restRun, &fSignalEvent);
     }
 }
 

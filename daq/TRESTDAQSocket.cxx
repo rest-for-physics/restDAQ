@@ -1,7 +1,7 @@
 
 #include <TRESTDAQSocket.h>
 
-void TRESTDAQSocket::Open(int* rem_ip_base, int* loc_ip,int rpt) {
+void TRESTDAQSocket::Open(int* rem_ip_base,int rpt) {
 
     // Initialize socket
     if ( (client = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP) ) == -1) {
@@ -31,14 +31,10 @@ void TRESTDAQSocket::Open(int* rem_ip_base, int* loc_ip,int rpt) {
         throw (TRESTDAQException(error));
     }
 
-    // Bind the socket to the local IP address
+    // Bind the socket
     struct sockaddr_in src;
     src.sin_family = PF_INET;
-    //  if ( (*(loc_ip+0) == 0) && (*(loc_ip+1) == 0) &&(*(loc_ip+2) == 0) &&(*(loc_ip+3) == 0) ){
-        src.sin_addr.s_addr = htonl(INADDR_ANY);
-      //}	else {
-      //  src.sin_addr.s_addr = htonl(((*(loc_ip+0)&0xFF)<<24) | ((*(loc_ip+1)&0xFF)<<16) | ((*(loc_ip+2)&0xFF)<<8) | ((*(loc_ip+3)&0xFF)<<0));
-    //  }
+    src.sin_addr.s_addr = htonl(INADDR_ANY);
     src.sin_port        = 0;
     if (bind(client, (struct sockaddr*) &src, sizeof(struct sockaddr_in)) != 0){
       std::string error ="socket bind failed: " + std::string(strerror(errno));

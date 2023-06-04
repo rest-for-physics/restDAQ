@@ -16,10 +16,10 @@ class TRESTDAQDummy : public TRESTDAQ {
    public:
     TRESTDAQDummy(TRestRun* rR, TRestRawDAQMetadata* dM);
 
-    virtual void configure();
-    virtual void startDAQ();
-    virtual void stopDAQ();
-    virtual void initialize();
+    void configure() override;
+    void startDAQ() override;
+    void stopDAQ() override;
+    void initialize() override;
 };
 
 #endif
