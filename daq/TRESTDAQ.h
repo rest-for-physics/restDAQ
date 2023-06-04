@@ -40,15 +40,17 @@ class TRESTDAQ {
 
     static Double_t getCurrentTime();
 
-    TRestRun* GetRestRun() { return restRun; }
-    TRestRawSignalEvent* GetSignalEvent() { return fSignalEvent; }
-    TRestRawDAQMetadata* GetDAQMetadata() { return daqMetadata; }
     static void FillTree(TRestRun *rR, TRestRawSignalEvent* sEvent);
 
-   private:
+    enum daq_metadata_types::triggerTypes triggerType;
+    enum daq_metadata_types::compressModeTypes compressMode;
+    enum daq_metadata_types::acqTypes acqType;
+
+   protected:
     TRestRun* restRun;
     TRestRawDAQMetadata* daqMetadata;
-    TRestRawSignalEvent* fSignalEvent;
+    TRestRawSignalEvent fSignalEvent;
+
 };
 
 #endif
