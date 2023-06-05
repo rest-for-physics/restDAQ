@@ -44,7 +44,7 @@
 
 
 constexpr int PLOTS_UPDATE_TIME = 5;//Seconds to update the plots
-constexpr int SLEEP_TIME = 500;//Miliseconds to sleep
+constexpr int SLEEP_TIME = 1000;//Miliseconds to sleep
 
 class TRestDAQGUI {
    public:
