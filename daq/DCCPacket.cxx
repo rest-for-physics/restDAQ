@@ -230,11 +230,11 @@ void DCCPacket::FemAdcDataPrint(DataPacket* pck) {
             Arg12ToFecAsicChannel((unsigned short)GET_RB_ARG1(samp), (unsigned short)GET_RB_ARG2(samp), fec, asic, channel);
             printf(" (F:%d A:%d C:%d)\n", fec, asic, channel);
         } else if (samp & SAMPLE_COUNT_FLAG) {
-            printf("SamCnt(%3d)=0x%3x (%4d)\n", i, GET_SAMPLE_COUNT(samp), GET_SAMPLE_COUNT(samp));
+            printf("0x%4x SamCnt(%3d)=0x%3x (%4d)\n", samp, i, GET_SAMPLE_COUNT(samp), GET_SAMPLE_COUNT(samp));
         } else if (samp & CELL_INDEX_FLAG) {
-            printf("Cell  (%3d)=0x%3x (%4d)\n", i, GET_CELL_INDEX(samp), GET_CELL_INDEX(samp));
+            printf("0x%4x Cell  (%3d)=0x%3x (%4d)\n", samp, i, GET_CELL_INDEX(samp), GET_CELL_INDEX(samp));
         } else {
-            printf("Sample(%3d)=0x%3x (%4d)\n", i, samp, samp);
+            printf("Sample(%3d)=0x%4x (%4d)\n", i, samp, samp);
         }
     }
     tmp = (((unsigned int)ntohs(pck->samp[i])) << 16) | ((unsigned int)ntohs(pck->samp[i + 1]));
@@ -271,11 +271,40 @@ int DCCPacket::Arg12ToFecAsicChannel(unsigned short arg1, unsigned short arg2, u
 
     if (physChannel < 0) return physChannel;
 
-    channel = physChannel;
-
     physChannel = fec * 72 * 4 + asic * 72 + physChannel;
 
     return physChannel;
 }
 
+/*******************************************************************************
+ Arg12ToFecAsicChannel
+*******************************************************************************/
+int DCCPacket::Arg12ToFecAsic(unsigned short arg1, unsigned short arg2, unsigned short &fec, unsigned short &asic, unsigned short channel) {
 
+    fec = (10 * (arg1 % 6) / 2 + arg2) / 4;
+    asic = (10 * (arg1 % 6) / 2 + arg2) % 4;
+
+    if ((fec > 5) || (asic > 3)) {
+        fec = arg2 - 4;
+        asic = 4;
+    }
+
+    int physChannel = -10;
+    if (channel > 2 && channel < 15) {
+        physChannel = channel - 3;
+    } else if (channel > 15 && channel < 28) {
+        physChannel = channel - 4;
+    } else if (channel > 28 && channel < 53) {
+        physChannel = channel - 5;
+    } else if (channel > 53 && channel < 66) {
+        physChannel = channel - 6;
+    } else if (channel > 66) {
+        physChannel = channel - 7;
+    }
+
+    if (physChannel < 0) return physChannel;
+
+    physChannel = fec * 72 * 4 + asic * 72 + physChannel;
+
+    return physChannel;
+}

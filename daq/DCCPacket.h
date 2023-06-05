@@ -175,6 +175,7 @@ namespace DCCPacket {
   void Pedestal_PrintHistoSummaryPacket(PedestalHistoSummaryPacket* pck);
   void FemAdcDataPrint(DataPacket* pck);
   int Arg12ToFecAsicChannel(unsigned short arg1, unsigned short arg2, unsigned short &fec, unsigned short &asic, unsigned short  &channel);
+  int Arg12ToFecAsic(unsigned short arg1, unsigned short arg2, unsigned short &fec, unsigned short &asic, unsigned short channel);
 }
 
 #endif

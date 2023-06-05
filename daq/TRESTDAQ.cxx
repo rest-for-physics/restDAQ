@@ -80,11 +80,10 @@ void TRESTDAQ::FillTree(TRestRun *rR, TRestRawSignalEvent* sEvent) {
     rR->GetEventTree()->Fill();
     rR->GetAnalysisTree()->Fill();
     // AutoSave is needed to read and write at the same time
-    if (event_cnt % 100 == 0 || (evTime - lastEvTime) > 10 ) {
+    if (event_cnt % 1000 == 0 || (evTime - lastEvTime) > 10 ) {
         rR->GetEventTree()->AutoSave("SaveSelf");
+        lastEvTime = evTime;
     }
   }
   event_cnt++;
-  
-  lastEvTime = evTime;
 }

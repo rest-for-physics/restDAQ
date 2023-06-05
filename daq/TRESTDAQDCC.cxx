@@ -36,7 +36,7 @@ void TRESTDAQDCC::initialize() {
       throw (TRESTDAQException("Unsupported compress mode, please check RML"));
     }
 
-    dcc_socket.Open(baseIp, REMOTE_DST_PORT);
+    dcc_socket.Open(daqMetadata->GetFECs().front().ip, REMOTE_DST_PORT);
 
 }
 
@@ -168,14 +168,15 @@ void TRESTDAQDCC::dataTaking() {
         waitForTrigger();
         // Perform data acquisition phase, compress, accept size
         fSignalEvent.SetTime(getCurrentTime());
+        int mode = compressMode == daq_metadata_types::compressModeTypes::ZEROSUPPRESSION? 1 : 0;
           for(auto fec : daqMetadata->GetFECs()) {
             for (int a = 0; a < TRestRawDAQMetadata::nAsics; a++) {
               if(!fec.asic_isActive[a])continue;
-              sprintf(cmd, "areq %d %d %d %d %d", (int)compressMode, fec.id, a, fec.asic_channelStart[a], fec.asic_channelEnd[a]);
+              sprintf(cmd, "areq %d %d %d %d %d", mode, fec.id, a, fec.asic_channelStart[a], fec.asic_channelEnd[a]);
               SendCommand(cmd, DCCPacket::packetType::BINARY, 0, DCCPacket::packetDataType::EVENT);
             }
           }
-        FillTree(restRun, &fSignalEvent);
+        if(fSignalEvent.GetNumberOfSignals() >0 )FillTree(restRun, &fSignalEvent);
     }
 }
 
@@ -194,6 +195,7 @@ void TRESTDAQDCC::saveEvent(unsigned char* buf, int size) {
 
     const unsigned int scnt = ntohs(dp->scnt);
     if ((scnt <= 8) && (ntohs(dp->samp[0]) == 0) && (ntohs(dp->samp[1]) == 0)) return;  // empty data
+    if ((scnt <= 12) && ((ntohs(dp->samp[0]) == 0x11ff) || (ntohs(dp->samp[1]) == 0x11ff) ) ) return;  // Data starting at 511 bin
 
     unsigned short fec, asic, channel;
     const unsigned short arg1 = GET_RB_ARG1(ntohs(dp->args));
@@ -235,7 +237,7 @@ void TRESTDAQDCC::savePedestals(unsigned char* buf, int size) {
     DCCPacket::DataPacket* dp = (DCCPacket::DataPacket*)buf;
 
     //Check if packet has ADC data
-    if( GET_TYPE(ntohs(dp->hdr) ) != RESP_TYPE_HISTOGRAM )return;
+    if( GET_TYPE(ntohs(dp->hdr) ) != RESP_TYPE_HISTOSUMMARY )return;
 
     DCCPacket::PedestalHistoSummaryPacket* pck = (DCCPacket::PedestalHistoSummaryPacket*) dp;
 
@@ -243,16 +245,17 @@ void TRESTDAQDCC::savePedestals(unsigned char* buf, int size) {
     const unsigned short arg1 = GET_RB_ARG1(ntohs(pck->args));
     const unsigned short arg2 = GET_RB_ARG2(ntohs(pck->args));
 
-    const unsigned int nbsw = (ntohs(pck->size) - 2 - 12 - 2) / sizeof(short);
+    const unsigned int nbsw = (ntohs(pck->size) - 2 - 6 - 2) / sizeof(short);
 
-      for (unsigned short channel = 0; channel < (nbsw / 2); channel++) {
+      for (unsigned short ch = 0; ch < (nbsw / 2); ch++) {
 
-        const int physChannel = DCCPacket::Arg12ToFecAsicChannel(arg1, arg2, fec, asic, channel);
-        const Short_t mean = ntohs(pck->stat[channel].mean);
-        const Short_t stdev = ntohs(pck->stat[channel].stdev);
+        const Short_t mean = ntohs(pck->stat[ch].mean);
+        const Short_t stdev = ntohs(pck->stat[ch].stdev);
+
+        const int physChannel = DCCPacket::Arg12ToFecAsic(arg1, arg2, fec, asic, ch);
 
         if (verboseLevel < TRestStringOutput::REST_Verbose_Level::REST_Debug){
-          std::cout << "FEC " << fec << " asic " << asic << " channel " << channel << " physChann " << physChannel << " mean "<< (double)(mean) / 100.0 << " stddev " << (double)(stdev) / 100.0 << std::endl;
+          std::cout << "FEC " << fec << " asic " << asic << " channel " << ch << " physChann " << physChannel << " mean "<< (double)(mean) / 100.0 << " stddev " << (double)(stdev) / 100.0 << std::endl;
         }
 
         if(physChannel < 0 )continue;
