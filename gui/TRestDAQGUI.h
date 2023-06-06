@@ -79,7 +79,7 @@ class TRestDAQGUI {
     static inline TRootEmbeddedCanvas* fECanvas = nullptr;
 
     static inline TGraph *meanRateGraph = nullptr, *instantRateGraph = nullptr;
-    static inline std::vector<TGraph*> pulsesGraph;
+    //static inline std::vector<TGraph*> pulsesGraph;
 
     std::thread updateT, readerT;
 

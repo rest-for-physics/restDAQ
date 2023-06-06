@@ -572,18 +572,27 @@ void TRestDAQGUI::UpdateParams() {
 
 void TRestDAQGUI::READ() {
 
+    std::string prevRun ="";
+
     while (!exitGUI) {
-
        std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME));
-
         if (status == 1) {
+            //Wait till filename is updated
+            while (runN == prevRun) {
+              std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME));
+            }
             int fSize = TRESTDAQManager::GetFileSize(runN);
-            if(fSize < guiMetadata->GetMinFileSize() )continue;//Wait till filesize is big enough
+            //Wait till filesize is big enough
+            while (fSize < guiMetadata->GetMinFileSize()) {
+              fSize = TRESTDAQManager::GetFileSize(runN);
+              std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME));
+            }
 
             TFile f(runN.c_str());
             if (f.IsZombie()) continue;
             if (!f.ReadKeys()) continue;
 
+            prevRun = runN;
             spectrum->Clear();
             spectrum->Reset();
             hitmap->Clear();
@@ -596,8 +605,8 @@ void TRestDAQGUI::READ() {
 
             std::cout << "Reading file " << runN << std::endl;
 
-            TTree* tree = (TTree*)f.Get("EventTree");
-            TRestRawSignalEvent* fEvent;
+            TTree* tree = f.Get<TTree>("EventTree");
+            TRestRawSignalEvent* fEvent = nullptr;
             tree->SetBranchAddress("TRestRawSignalEventBranch", &fEvent);
             int i = 0;
             double oldTimeEvent = 0;
@@ -606,6 +615,7 @@ void TRestDAQGUI::READ() {
             while (status == 1 && !exitGUI) {
                 int entries = tree->GetEntries();
                 while (i < entries && status == 1 && !exitGUI) {
+                    tree->Refresh();
                     tree->GetEntry(i);
                     double timeEvent = fEvent->GetTime();
                     if (i == 0) {
@@ -617,7 +627,6 @@ void TRestDAQGUI::READ() {
                     i++;
                 }
                 std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME) );
-                tree->Refresh();
             }
             f.Close();
         }
@@ -647,11 +656,11 @@ void TRestDAQGUI::UpdateRate(const double& currentTimeEv, double& oldTimeEv, con
 
 void TRestDAQGUI::AnalyzeEvent(TRestRawSignalEvent* fEvent, double& oldTimeUpdate) {
 
+    if(fEvent == nullptr) return;
+
     bool updatePlots = tNow > (oldTimeUpdate + PLOTS_UPDATE_TIME );
 
-    if (updatePlots) {
-        pulsesGraph.clear();
-    }
+    std::vector<TGraph*> pulsesGraph;
 
     int evAmplitude = 0;
     std::map<int, int> hmap;
@@ -666,7 +675,7 @@ void TRestDAQGUI::AnalyzeEvent(TRestRawSignalEvent* fEvent, double& oldTimeUpdat
         hmap[signal->GetID()] = max;
 
           if (updatePlots) 
-            pulsesGraph.emplace_back( signal->GetGraph(color));
+            pulsesGraph.emplace_back( std::move(signal->GetGraph(color)));
         color++;
     }
 
@@ -685,7 +694,7 @@ void TRestDAQGUI::AnalyzeEvent(TRestRawSignalEvent* fEvent, double& oldTimeUpdat
         spectrum->Draw();
 
         fECanvas->GetCanvas()->cd(3);
-        for (auto gr : pulsesGraph) {
+        for (const auto& gr : pulsesGraph) {
             gr->Draw("SAME");
         }
 
