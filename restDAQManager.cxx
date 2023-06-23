@@ -136,9 +136,9 @@ int main(int argc, char** argv) {
         char *fullPath = realpath(cfgFile.c_str(), NULL);
           if(fullPath){
             std::cout<<"Full path: "<<fullPath<<std::endl;
-            sprintf(mem->cfgFile, fullPath);
+            sprintf(mem->cfgFile,"%s", fullPath);
           } else {
-            sprintf(mem->cfgFile, cfgFile.c_str());
+            sprintf(mem->cfgFile,"%s", cfgFile.c_str());
           }
         TRESTDAQManager::DetachSharedMemory(&mem);
           if(startUp){
