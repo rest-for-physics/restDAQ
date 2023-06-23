@@ -44,16 +44,16 @@
 
 
 constexpr int PLOTS_UPDATE_TIME = 5;//Seconds to update the plots
-constexpr int SLEEP_TIME = 1000;//Miliseconds to sleep
+constexpr int SLEEP_TIME = 500;//Miliseconds to sleep
 
 class TRestDAQGUI {
    public:
     TGMainFrame* fMain;
     TGVerticalFrame* fVLeft;
     static inline TGTextButton *startButton, *stopButton, *quitButton, *cfgButton, *startUpButton;
-    TGLabel *runLabel, *cfgLabel, *typeLabel, *nEventsLabel;
+    TGLabel *runLabel, *cfgLabel, *typeLabel, *nEventsLabel, *driftFieldLabel, *meshVoltageLabel, *pressureLabel, *runTagLabel;
     static inline TGLabel *statusLabel,*counterLabel, *rateLabel;
-    static inline TGTextEntry* runName, *cfgName, *nEventsEntry;
+    static inline TGTextEntry* runName, *cfgName, *nEventsEntry, *driftFieldEntry, *meshVoltageEntry, *pressureEntry, *runTagEntry;
 
     static inline TGComboBox* typeCombo;
 
@@ -63,14 +63,15 @@ class TRestDAQGUI {
     TGTransientFrame* cfgMain;
     TGTransientFrame* startUpMain;
 
-    std::string cfgFileName = "none";
+    static inline std::string cfgFileName = "none";
     static inline std::string runN = "none";
+    static inline std::string runTag = "none";
 
     static inline double oldTime = 0;
     static inline double tNow, startTimeEvent;
     static inline int rateGraphCounter = 0;
 
-    static inline Int_t eventCount = 0, oldEvents = 0, nEvents = 0;
+    static inline Int_t eventCount = 0, oldEvents = 0, nEvents = 0, drift = 0, mesh = 0, pressure = 0;
     static inline Int_t type = 0;
 
     static inline TH1* pulses = nullptr;
@@ -79,7 +80,7 @@ class TRestDAQGUI {
     static inline TRootEmbeddedCanvas* fECanvas = nullptr;
 
     static inline TGraph *meanRateGraph = nullptr, *instantRateGraph = nullptr;
-    //static inline std::vector<TGraph*> pulsesGraph;
+    static inline  std::vector<TGraph*> pulsesGraph;
 
     std::thread updateT, readerT;
 
@@ -94,6 +95,10 @@ class TRestDAQGUI {
     void DisableInputs();
     void ReadCfgFileName();
     void VerifyEventsEntry();
+    void UpdateDrift();
+    void UpdateMesh();
+    void UpdatePressure();
+    void UpdateRunTag();
 
     void CloseCfgWindow(){
       if(cfgMain)delete cfgMain;

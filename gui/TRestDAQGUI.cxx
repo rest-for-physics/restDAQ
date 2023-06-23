@@ -177,6 +177,70 @@ void TRestDAQGUI::SetInputs() {
 
     fInputParam->AddFrame(nEventsFrame, new TGLayoutHints(kLHintsCenterX, 1, 1, 1, 1));
 
+    // 2.4 Drift field
+    TGHorizontalFrame* driftFieldFrame = new TGHorizontalFrame(fInputParam, 200, 20, kLHintsCenterX);
+    driftFieldLabel = new TGLabel(driftFieldFrame, "Drift Field:");
+    driftFieldEntry = new TGTextEntry(driftFieldFrame, "        0");
+    driftFieldEntry->SetText(std::to_string(drift).c_str());
+
+    driftFieldEntry->Connect("TextChanged(char *)", "TRestDAQGUI", this, "UpdateDrift()");
+
+    driftFieldEntry->SetToolTipText("Dift field in V");
+    driftFieldEntry->SetEnabled(kFALSE);
+
+    driftFieldFrame->AddFrame(driftFieldLabel, new TGLayoutHints(kLHintsLeft, 1, 1, 1, 1));
+    driftFieldFrame->AddFrame(driftFieldEntry, new TGLayoutHints(kLHintsCenterX, 1, 1, 1, 1));
+
+    fInputParam->AddFrame(driftFieldFrame, new TGLayoutHints(kLHintsCenterX, 1, 1, 1, 1));
+
+    // 2.5 Mesh Voltage
+    TGHorizontalFrame* meshVoltageFrame = new TGHorizontalFrame(fInputParam, 200, 20, kLHintsCenterX);
+    meshVoltageLabel = new TGLabel(meshVoltageFrame, "Mesh Voltage:");
+    meshVoltageEntry = new TGTextEntry(meshVoltageFrame, "        0");
+    meshVoltageEntry->SetText(std::to_string(mesh).c_str());
+
+    meshVoltageEntry->Connect("TextChanged(char *)", "TRestDAQGUI", this, "UpdateMesh()");
+
+    meshVoltageEntry->SetToolTipText("Mesh voltage in V");
+    meshVoltageEntry->SetEnabled(kFALSE);
+
+    meshVoltageFrame->AddFrame(meshVoltageLabel, new TGLayoutHints(kLHintsLeft, 1, 1, 1, 1));
+    meshVoltageFrame->AddFrame(meshVoltageEntry, new TGLayoutHints(kLHintsCenterX, 1, 1, 1, 1));
+
+    fInputParam->AddFrame(meshVoltageFrame, new TGLayoutHints(kLHintsCenterX, 1, 1, 1, 1));
+
+    // 2.6 Pressure
+    TGHorizontalFrame* pressureFrame = new TGHorizontalFrame(fInputParam, 200, 20, kLHintsCenterX);
+    pressureLabel = new TGLabel(pressureFrame, "Pressure:");
+    pressureEntry = new TGTextEntry(pressureFrame, "        0");
+    pressureEntry->SetText(std::to_string(pressure).c_str());
+
+    pressureEntry->Connect("TextChanged(char *)", "TRestDAQGUI", this, "UpdatePressure()");
+
+    pressureEntry->SetToolTipText("Pressure in bar");
+    pressureEntry->SetEnabled(kFALSE);
+
+    pressureFrame->AddFrame(pressureLabel, new TGLayoutHints(kLHintsLeft, 1, 1, 1, 1));
+    pressureFrame->AddFrame(pressureEntry, new TGLayoutHints(kLHintsCenterX, 1, 1, 1, 1));
+
+    fInputParam->AddFrame(pressureFrame, new TGLayoutHints(kLHintsCenterX, 1, 1, 1, 1));
+
+    // 2.7 Run tag
+    TGHorizontalFrame* runTagFrame = new TGHorizontalFrame(fInputParam, 200, 20, kLHintsCenterX);
+    runTagLabel = new TGLabel(runTagFrame, "Run Tag:");
+    runTagEntry = new TGTextEntry(runTagFrame, "______________");
+    runTagEntry->SetText(runTag.c_str());
+
+    runTagEntry->SetToolTipText("Run Tag");
+    runTagEntry->SetEnabled(kFALSE);
+
+    runTagEntry->Connect("TextChanged(char *)", "TRestDAQGUI", this, "UpdateRunTag()");
+
+    runTagFrame->AddFrame(runTagLabel, new TGLayoutHints(kLHintsLeft, 1, 1, 1, 1));
+    runTagFrame->AddFrame(runTagEntry, new TGLayoutHints(kLHintsCenterX, 1, 1, 1, 1));
+
+    fInputParam->AddFrame(runTagFrame, new TGLayoutHints(kLHintsCenterX, 1, 1, 1, 1));
+
     fInputFrame->AddFrame(fInputParam, new TGLayoutHints(kLHintsCenterX, 1, 1, 1, 1));
 
     fVLeft->AddFrame(fInputFrame, new TGLayoutHints(kLHintsCenterX, 1, 1, 1, 1));
@@ -277,6 +341,29 @@ void TRestDAQGUI::VerifyEventsEntry(){
 
 }
 
+void TRestDAQGUI::UpdateDrift(){
+
+  drift = std::atoi(driftFieldEntry->GetText());
+
+}
+
+void TRestDAQGUI::UpdateMesh(){
+
+  mesh = std::atoi(meshVoltageEntry->GetText());
+
+}
+
+void TRestDAQGUI::UpdatePressure(){
+  pressure = std::atof(pressureEntry->GetText());
+}
+
+void TRestDAQGUI::UpdateRunTag(){
+
+runTag = runTagEntry->GetText();
+
+}
+
+
 void TRestDAQGUI::StartPressed() {
     int shmid;
     TRESTDAQManager::sharedMemoryStruct* mem;
@@ -299,6 +386,11 @@ void TRestDAQGUI::StartPressed() {
 
     nEvents = std::atoi(nEventsEntry->GetText());
     mem->nEvents = nEvents;
+
+    std::string tag = runTag + "_Vm_"+std::to_string(mesh) + "_Vd_" + std::to_string(drift) + "_Pr_" +std::to_string(pressure);
+
+    sprintf(mem->runTag, tag.c_str());
+
     mem->startDAQ = 1;
     TRESTDAQManager::DetachSharedMemory(&mem);
 }
@@ -412,7 +504,7 @@ void TRestDAQGUI::LoadLastSettings() {
     std::string fileN = REST_USER_PATH + "/" + lastSetFile;
     std::ifstream file(fileN);
     if (file.is_open())
-        file >> cfgFileName >> type >> nEvents;
+        file >> cfgFileName >> type >> nEvents >> runTag >> drift >> mesh >> pressure;
     else
         std::cout << "Cannot open " << fileN << std::endl;
 }
@@ -422,7 +514,7 @@ void TRestDAQGUI::SaveLastSettings() {
     std::cout << "Saving last settings in " << fileN << std::endl;
     std::ofstream file(fileN);
     if (file.is_open())
-        file << cfgFileName << "\t" << type << "\t" << nEvents << "\n";
+        file << cfgFileName << "\t" << type << "\t" << nEvents << "\t" << runTag << "\t" << drift << "\t" << mesh << "\t" << pressure << "\n";
     else
         std::cout << "Cannot open " << fileN << std::endl;
 }
@@ -499,6 +591,10 @@ void TRestDAQGUI::SetRunningState() {
     cfgButton->SetEnabled(kFALSE);
     startUpButton->SetEnabled(kFALSE);
     nEventsEntry->SetEnabled(kFALSE);
+    driftFieldEntry->SetEnabled(kFALSE);
+    meshVoltageEntry->SetEnabled(kFALSE);
+    pressureEntry->SetEnabled(kFALSE);
+    runTagEntry->SetEnabled(kFALSE);
 }
 
 void TRestDAQGUI::SetStoppedState() {
@@ -509,6 +605,10 @@ void TRestDAQGUI::SetStoppedState() {
     cfgButton->SetEnabled(kTRUE);
     startUpButton->SetEnabled(kTRUE);
     nEventsEntry->SetEnabled(kTRUE);
+    driftFieldEntry->SetEnabled(kTRUE);
+    meshVoltageEntry->SetEnabled(kTRUE);
+    pressureEntry->SetEnabled(kTRUE);
+    runTagEntry->SetEnabled(kTRUE);
 }
 
 void TRestDAQGUI::SetUnknownState() {
@@ -572,77 +672,116 @@ void TRestDAQGUI::UpdateParams() {
 
 void TRestDAQGUI::READ() {
 
-    std::string prevRun ="";
+    std::string fName = "";
+    bool resetPlots = true;
+    double timeUpdate = 0;
+    int currentEventCount =0;
+    double oldTimeEvent = 0;
+    int oldEventCount = 0;
+    int parentRunNumber = 0;
 
     while (!exitGUI) {
-       std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME));
-        if (status == 1) {
-            //Wait till filename is updated
-            while (runN == prevRun) {
-              std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME));
-            }
+
+        if (status == 1 && !exitGUI) {
+
             int fSize = TRESTDAQManager::GetFileSize(runN);
             //Wait till filesize is big enough
-            while (fSize < guiMetadata->GetMinFileSize()) {
+            while (fSize < guiMetadata->GetMinFileSize() && status == 1 && !exitGUI) {
               fSize = TRESTDAQManager::GetFileSize(runN);
               std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME));
             }
 
-            TFile f(runN.c_str());
-            if (f.IsZombie()) continue;
-            if (!f.ReadKeys()) continue;
+            //Wait till filename is updated
+            while (runN == fName && status == 1 && !exitGUI) {
+              std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME));
+            }
 
-            prevRun = runN;
-            spectrum->Clear();
-            spectrum->Reset();
-            hitmap->Clear();
-            hitmap->Reset("");
-            instantRateGraph->Set(0);
-            instantRateGraph->SetPoint(0, tNow, 0);
-            meanRateGraph->Set(0);
-            meanRateGraph->SetPoint(0, tNow, 0);
-            rateGraphCounter = 0;
+            if (resetPlots){
+              spectrum->Clear();
+              spectrum->Reset();
+              hitmap->Clear();
+              hitmap->Reset("");
+              instantRateGraph->Set(0);
+              instantRateGraph->SetPoint(0, tNow, 0);
+              meanRateGraph->Set(0);
+              meanRateGraph->SetPoint(0, tNow, 0);
+              rateGraphCounter = 0;
+              timeUpdate = tNow;
+              currentEventCount = 0;
+              resetPlots = false;
+              oldTimeEvent = 0;
+              oldEventCount = 0;
+              parentRunNumber = 0;
+            }
 
-            std::cout << "Reading file " << runN << std::endl;
+            std::cout << "Checking input file " << runN << std::endl;
+
+            TRestRun runInfo (runN);
+            TRestRun restRun;
+            restRun.LoadConfigFromFile(cfgFileName);
+            restRun.SetRunType(runInfo.GetRunType());
+            restRun.SetRunNumber(runInfo.GetRunNumber());
+            restRun.SetRunTag(runInfo.GetRunTag());
+            restRun.SetParentRunNumber(parentRunNumber);
+            fName = realpath(restRun.FormFormat(restRun.GetOutputFileName()).Data(), NULL);
+
+            std::cout << "Reading file " << fName << std::endl;
+
+            TFile f(fName.c_str());
+              while((f.IsZombie() || !f.ReadKeys()) && status == 1 && !exitGUI){
+                f.Open(fName.c_str());
+                std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME));
+              }
+
+            std::cout << "Reading file " << fName << std::endl;
 
             TTree* tree = f.Get<TTree>("EventTree");
             TRestRawSignalEvent* fEvent = nullptr;
             tree->SetBranchAddress("TRestRawSignalEventBranch", &fEvent);
+
             int i = 0;
-            double oldTimeEvent = 0;
-            int oldEventCount = 0;
-            double timeUpdate = tNow;
-            while (status == 1 && !exitGUI) {
-                int entries = tree->GetEntries();
+            int fCount = 0;
+            while (fCount<2) {
+                tree->Refresh();
+                const int entries = tree->GetEntries();
                 while (i < entries && status == 1 && !exitGUI) {
-                    tree->Refresh();
                     tree->GetEntry(i);
                     double timeEvent = fEvent->GetTime();
-                    if (i == 0) {
+                      if (currentEventCount == 0) {
                         startTimeEvent = timeEvent;
                         oldTimeEvent = timeEvent;
-                    }
-                    UpdateRate(timeEvent, oldTimeEvent, i, oldEventCount);
+                      }
+                    UpdateRate(timeEvent, oldTimeEvent, currentEventCount, oldEventCount);
                     AnalyzeEvent(fEvent, timeUpdate);
                     i++;
+                    currentEventCount++;
                 }
+                 if(fName != runN || status != 1 || exitGUI){
+                   fCount++;
+                 }
                 std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME) );
             }
             f.Close();
+            std::cout << "Closing file " << fName << std::endl;
+            if(status != 1)resetPlots = true;
+            parentRunNumber++;
         }
+      std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME));
     }
 
     std::cout << "Exiting reading thread " << std::endl;
 }
 
 void TRestDAQGUI::UpdateRate(const double& currentTimeEv, double& oldTimeEv, const int& currentEventCount, int& oldEventCount) {
-    // std::cout<<currentTimeEv<<" "<< oldTimeEv<<" "<<currentTimeEv - oldTimeEv<<std::endl;
+
     if (currentTimeEv - oldTimeEv < PLOTS_UPDATE_TIME) return;
+
+    //std::cout<<currentTimeEv<<" "<< oldTimeEv<<" "<<currentTimeEv - oldTimeEv<<" "<<currentTimeEv - startTimeEvent <<std::endl;
 
     double meanRate = currentEventCount / (currentTimeEv - startTimeEvent);
     double instantRate = (currentEventCount - oldEventCount) / (currentTimeEv - oldTimeEv);
 
-    // std::cout<<"Rate "<<meanRate<<" "<<instantRate<<" "<<currentEventCount<<" "<<oldEventCount<<std::endl;
+    //std::cout<<"Rate "<<meanRate<<" "<<instantRate<<" "<<currentEventCount<<" "<<oldEventCount<<std::endl;
 
     double rootTime = (currentTimeEv + oldTimeEv) / 2.;
 
@@ -660,7 +799,10 @@ void TRestDAQGUI::AnalyzeEvent(TRestRawSignalEvent* fEvent, double& oldTimeUpdat
 
     bool updatePlots = tNow > (oldTimeUpdate + PLOTS_UPDATE_TIME );
 
-    std::vector<TGraph*> pulsesGraph;
+    if(updatePlots){
+      for(auto &gr : pulsesGraph)delete gr;
+      pulsesGraph.clear();
+    }
 
     int evAmplitude = 0;
     std::map<int, int> hmap;
@@ -674,8 +816,10 @@ void TRestDAQGUI::AnalyzeEvent(TRestRawSignalEvent* fEvent, double& oldTimeUpdat
         evAmplitude +=max;
         hmap[signal->GetID()] = max;
 
-          if (updatePlots) 
-            pulsesGraph.emplace_back( std::move(signal->GetGraph(color)));
+          if (updatePlots){ 
+            auto gr = signal->GetGraph(color);
+            pulsesGraph.emplace_back((TGraph*)(gr->Clone()) );
+          }
         color++;
     }
 
