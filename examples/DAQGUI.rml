@@ -7,7 +7,7 @@
         <parameter name="signalThreshold" value="2.0"/>
         <parameter name="binsSpectra" value="1000"/>
         <parameter name="spectraMax" value="100000"/>
-        <parameter name="minFileSize" value="15360"/>
+        <parameter name="minFileSize" value="100000"/>
         <parameter name="readoutFile" value="DummyReadout.root"/>
         <parameter name="readoutName" value="dummy"/>
     </TRestDAQGUIMetadata>
