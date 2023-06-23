@@ -12,6 +12,7 @@ Author: JuanAn Garcia 18/05/2021
 #include <chrono>
 
 std::atomic<bool> TRESTDAQ::abrt(false);
+std::atomic<bool> TRESTDAQ::nextFile(false);
 std::atomic<int> TRESTDAQ::event_cnt(0);
 
 TRESTDAQ::TRESTDAQ(TRestRun* rR, TRestRawDAQMetadata* dM) {
@@ -64,7 +65,6 @@ TRESTDAQ::TRESTDAQ(TRestRun* rR, TRestRawDAQMetadata* dM) {
 
 TRESTDAQ::~TRESTDAQ() {
     // Cleanup if any
-    event_cnt=0;
 }
 
 Double_t TRESTDAQ::getCurrentTime() {
@@ -76,11 +76,12 @@ void TRESTDAQ::FillTree(TRestRun *rR, TRestRawSignalEvent* sEvent) {
   const double evTime = sEvent->GetTime();
 
   if(rR){
+    const int eventsTree = rR->GetAnalysisTree()->GetEntries();
     rR->GetAnalysisTree()->SetEventInfo(sEvent);
     rR->GetEventTree()->Fill();
     rR->GetAnalysisTree()->Fill();
     // AutoSave is needed to read and write at the same time
-    if (event_cnt % 1000 == 0 || (evTime - lastEvTime) > 10 ) {
+    if (eventsTree % 1000 == 0 || (evTime - lastEvTime) > 10 ) {
         rR->GetEventTree()->AutoSave("SaveSelf");
         lastEvTime = evTime;
     }

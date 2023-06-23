@@ -124,6 +124,8 @@ void TRESTDAQManager::dataTaking() {
         return;
     }
 
+    std::string runTag = sM->runTag;
+
     if (sM->nEvents > -1) {
         daqMetadata.SetNEvents(sM->nEvents);
         std::cout << "Setting " << sM->nEvents << " events to be acquired" << std::endl;
@@ -132,50 +134,79 @@ void TRESTDAQManager::dataTaking() {
         sM->nEvents = daqMetadata.GetNEvents();
     }
 
-    TRestRun restRun;
-    restRun.LoadConfigFromFile(sM->cfgFile);
     daqMetadata.PrintMetadata();
-    TString rTag = restRun.GetRunTag();
-
-    if (rTag == "Null" || rTag == "") restRun.SetRunTag(daqMetadata.GetTitle());
-
-    restRun.SetRunType(daqMetadata.GetAcquisitionType());
-    restRun.AddMetadata(&daqMetadata);
-    restRun.FormOutputFile();
-    sprintf(sM->runName, "%s", restRun.GetOutputFileName().Data());
-    std::cout << "Run " << sM->runName << " " << restRun.GetOutputFileName() << std::endl;
-    restRun.SetStartTimeStamp(TRESTDAQ::getCurrentTime());
-    restRun.PrintMetadata();
-
+    maxFileSize = daqMetadata.GetMaxFileSize();
+    const std::string cfgFile = std::string(sM->cfgFile);
     sM->status = 1;
     DetachSharedMemory(&sM);
-
+    TRESTDAQ::abrt = false;
+    TRESTDAQ::event_cnt = 0;
     std::thread abrtT(AbortThread);
+    int parentRunNumber = 0;
+    int runNumber =-1;
 
-    try{
-      auto daq = GetTRESTDAQ(&restRun,&daqMetadata);
-        if(daq){ 
-          TRESTDAQ::abrt = false;
-          daq->configure();
-          std::cout << "Electronics configured, starting data taking run type " << std::endl;
-          daq->startDAQ();  // Should wait till completion or stopped
-          daq->stopDAQ();
+    do {
+      TRestRun restRun;
+      restRun.LoadConfigFromFile(cfgFile);
+
+        if(!runTag.empty() && runTag != "none"){
+          restRun.SetRunTag(runTag);
         }
-    } catch(const TRESTDAQException& e) {
-      std::cerr<<"TRESTDAQException was thrown: "<<e.what()<<std::endl;
-    } catch (const std::exception& e) {
+
+      restRun.SetRunType(daqMetadata.GetAcquisitionType());
+      restRun.AddMetadata(&daqMetadata);
+      restRun.SetParentRunNumber(parentRunNumber);
+      if(parentRunNumber ==0){
+          restRun.FormOutputFile();
+          runNumber = restRun.GetRunNumber();
+        } else {
+          restRun.SetRunNumber(runNumber);
+          restRun.FormOutputFile();
+        }
+
+      if (!GetSharedMemory(shmid, &sM)) break;
+      sprintf(sM->runName, "%s", restRun.GetOutputFileName().Data());
+      DetachSharedMemory(&sM);
+      std::cout << "Run " << " " << restRun.GetOutputFileName() << std::endl;
+
+      TRESTDAQ::nextFile = false;
+      std::thread fileSizeT(FileSizeThread);
+
+      restRun.SetStartTimeStamp(TRESTDAQ::getCurrentTime());
+      restRun.PrintMetadata();
+
+      try{
+        auto daq = GetTRESTDAQ(&restRun, &daqMetadata);
+          if(daq){
+            if(parentRunNumber == 0){
+              daq->configure();
+              std::cout << "Electronics configured, starting data taking run type " << std::endl;
+            }
+            daq->startDAQ();  // Should wait till completion or stopped
+            daq->stopDAQ();
+          }
+      } catch(const TRESTDAQException& e) {
+        std::cerr<<"TRESTDAQException was thrown: "<<e.what()<<std::endl;
+      } catch (const std::exception& e) {
         std::cerr<<"std::exception was thrown: "<<e.what()<<std::endl;
-    }
+      }
 
-    StopRun();
+      restRun.SetEndTimeStamp(TRESTDAQ::getCurrentTime());
+      restRun.UpdateOutputFile();
+      restRun.CloseFile();
+      restRun.PrintMetadata();
 
-    restRun.SetEndTimeStamp(TRESTDAQ::getCurrentTime());
-    restRun.UpdateOutputFile();
-    restRun.CloseFile();
-    restRun.PrintMetadata();
-    std::cout << "Data taking stopped" << std::endl;
+        if( (daqMetadata.GetNEvents() != 0 && TRESTDAQ::event_cnt >= daqMetadata.GetNEvents()) || daqMetadata.GetAcquisitionType() =="pedestal" ){
+          StopRun();
+        }
+
+      fileSizeT.join();
+      parentRunNumber++;
+    } while (!TRESTDAQ::abrt && TRESTDAQ::nextFile );
 
     abrtT.join();
+    std::cout << "Data taking stopped " << std::endl;
+
 }
 
 void TRESTDAQManager::StopRun() {
@@ -223,6 +254,8 @@ void TRESTDAQManager::run() {
             if (!GetSharedMemory(shmid, &sharedMemory)) break;
             sharedMemory->status = 0;
             sharedMemory->startDAQ = 0;
+            std::cout << "DAQ stopped" << std::endl;
+            TRESTDAQ::event_cnt = 0;
         }
 
         DetachSharedMemory(&sharedMemory);
@@ -251,6 +284,7 @@ void TRESTDAQManager::PrintSharedMemory(sharedMemoryStruct* sM) {
     std::cout << "Status: " << sM->status << std::endl;
     std::cout << "StartDAQ: " << sM->startDAQ << std::endl;
     std::cout << "RunType: " << sM->runType << std::endl;
+    std::cout << "RunTag: " << sM->runTag << std::endl;
     std::cout << "AbortRun: " << sM->abortRun << std::endl;
     std::cout << "Event count: " << sM->eventCount << std::endl;
     std::cout << "Number of events to acquire: " << sM->nEvents << std::endl;
@@ -260,7 +294,7 @@ void TRESTDAQManager::PrintSharedMemory(sharedMemoryStruct* sM) {
 
 void TRESTDAQManager::InitializeSharedMemory(sharedMemoryStruct* sM) {
     sprintf(sM->cfgFile, "none");
-    sprintf(sM->runType, "none");
+    sprintf(sM->runTag, "none");
     sprintf(sM->runName, "none");
     sM->startDAQ = 0;
     sM->startUp = 0;
@@ -281,14 +315,34 @@ void TRESTDAQManager::AbortThread() {
     int shmid;
     sharedMemoryStruct* sharedMemory;
 
-    bool abrt = 0;
-    do {
+    bool abortRun = false;
+      do {
         if (!GetSharedMemory(shmid, &sharedMemory)) break;
-        abrt = sharedMemory->abortRun;
+        abortRun = sharedMemory->abortRun;
         sharedMemory->eventCount = TRESTDAQ::event_cnt;
         DetachSharedMemory(&sharedMemory);
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    } while (!abrt);
+      } while (!abortRun);
 
     TRESTDAQ::abrt = true;
 }
+
+
+void TRESTDAQManager::FileSizeThread() {
+    int shmid;
+    sharedMemoryStruct* sharedMemory;
+
+      do {
+        if (!GetSharedMemory(shmid, &sharedMemory)) break;
+        const std::string runN = std::string(sharedMemory->runName);
+        const int fileSize = GetFileSize(runN);
+        DetachSharedMemory(&sharedMemory);
+          if(fileSize >= maxFileSize){
+            std::cout << runN << " "<< fileSize << " "<<maxFileSize<< std::endl;
+            TRESTDAQ::nextFile = true;
+          }
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      } while (!TRESTDAQ::abrt && !TRESTDAQ::nextFile);
+
+}
+

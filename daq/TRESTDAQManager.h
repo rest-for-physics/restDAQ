@@ -32,6 +32,7 @@ class TRESTDAQManager {
     struct sharedMemoryStruct {
         char cfgFile[1024];
         char runType[256];
+        char runTag[1024];
         char runName[1024];
         int startDAQ;
         int startUp;
@@ -41,6 +42,8 @@ class TRESTDAQManager {
         int exitManager;
         int abortRun;
     };
+
+    inline static int maxFileSize = 1000000000;
 
     void dataTaking();
     void startUp();
@@ -58,6 +61,7 @@ class TRESTDAQManager {
     static void StopRun();
     static void ExitManager();
     static void AbortThread();
+    static void FileSizeThread();
 
    private:
     inline static const key_t key{0x12367};

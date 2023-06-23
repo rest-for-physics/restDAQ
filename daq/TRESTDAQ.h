@@ -33,6 +33,7 @@ class TRESTDAQ {
     virtual void startUp(){};
 
     static std::atomic<bool> abrt;
+    static std::atomic<bool> nextFile;
     static std::atomic<int> event_cnt;
     static inline double lastEvTime = 0;
 

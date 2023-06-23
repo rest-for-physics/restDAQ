@@ -24,7 +24,7 @@ void TRESTDAQDummy::configure() { std::cout << "Configuring readout" << std::end
 void TRESTDAQDummy::startDAQ() {
     std::srand(static_cast<unsigned int>(std::time(nullptr)));
 
-    while ( (!abrt && daqMetadata->GetNEvents() == 0) || event_cnt < daqMetadata->GetNEvents() ) {
+    while ( !abrt && !nextFile && (daqMetadata->GetNEvents() == 0 || event_cnt < daqMetadata->GetNEvents() ) ) {
         fSignalEvent.Initialize();
         fSignalEvent.SetID(event_cnt);
         fSignalEvent.SetTime(getCurrentTime());
@@ -44,6 +44,7 @@ void TRESTDAQDummy::startDAQ() {
         }
 
         FillTree(restRun, &fSignalEvent);
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
 }
 

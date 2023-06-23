@@ -158,7 +158,7 @@ void TRESTDAQDCC::dataTaking() {
     // else SendCommand("skipempty 0", -1);//Save empty frames if not
     SendCommand("isobus 0x4F");  // Reset event counter, timestamp for type 11
 
-    while (!abrt && (daqMetadata->GetNEvents() == 0 || event_cnt < daqMetadata->GetNEvents())) {
+    while ( !abrt && !nextFile && (daqMetadata->GetNEvents() == 0 || event_cnt < daqMetadata->GetNEvents())) {
         SendCommand("fem 0");
 
         SendCommand("isobus 0x6C");// SCA start

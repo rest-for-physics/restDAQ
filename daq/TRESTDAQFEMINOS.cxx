@@ -253,8 +253,7 @@ void TRESTDAQFEMINOS::dataTaking() {
     if(compressMode == daq_metadata_types::compressModeTypes::ALLCHANNELS || compressMode == daq_metadata_types::compressModeTypes::ZEROSUPPRESSION){
       BroadcastCommand("aget * mode 0x1",FEMArray);//Mode: 0x0: hit/selected channels 0x1:all channels
     } else if(compressMode == daq_metadata_types::compressModeTypes::TRIGGEREDCHANNELS){
-      BroadcastCommand("aget * mode 0x0",FEMArray);//Mode: 0x0: hit/selected channels 0x1:all channels
-    
+      BroadcastCommand("aget * mode 0x0",FEMArray);//Mode: 0x0: hit/selected channels 0x1:all channels    
     }
   BroadcastCommand("aget * tst_digout 1",FEMArray);//??
   
@@ -300,7 +299,7 @@ void TRESTDAQFEMINOS::dataTaking() {
     BroadcastCommand("sca enable 1",FEMArray);//Enable data taking
     BroadcastCommand("daq 0xFFFFFE F",FEMArray, false);//DAQ request
       //Wait till DAQ completion
-      while (!abrt && (daqMetadata->GetNEvents() == 0 || event_cnt < daqMetadata->GetNEvents())) {
+      while ( !abrt && !nextFile && (daqMetadata->GetNEvents() == 0 || event_cnt < daqMetadata->GetNEvents())) {
         //Do something here? E.g. send packet request
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
       }
