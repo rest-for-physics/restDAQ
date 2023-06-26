@@ -143,11 +143,20 @@ void TRESTDAQManager::dataTaking() {
     TRESTDAQ::event_cnt = 0;
     std::thread abrtT(AbortThread);
     int parentRunNumber = 0;
-    int runNumber =-1;
+    TRestDataBase *db = gDataBase;
+    int runNumber = db->get_lastrun() + 1;
+    DBEntry entry;
+    entry.runNr = runNumber;
+    entry.description = "TRESTDAQ";
+    entry.tag = runTag;
+    entry.type = daqMetadata.GetAcquisitionType();
+    entry.version = REST_RELEASE;
+    db->set_run(entry);
 
     do {
       TRestRun restRun;
       restRun.LoadConfigFromFile(cfgFile);
+      restRun.SetRunNumber(runNumber);
 
         if(!runTag.empty() && runTag != "none"){
           restRun.SetRunTag(runTag);
@@ -156,13 +165,7 @@ void TRESTDAQManager::dataTaking() {
       restRun.SetRunType(daqMetadata.GetAcquisitionType());
       restRun.AddMetadata(&daqMetadata);
       restRun.SetParentRunNumber(parentRunNumber);
-      if(parentRunNumber ==0){
-          restRun.FormOutputFile();
-          runNumber = restRun.GetRunNumber();
-        } else {
-          restRun.SetRunNumber(runNumber);
-          restRun.FormOutputFile();
-        }
+      restRun.FormOutputFile();
 
       if (!GetSharedMemory(shmid, &sM)) break;
       sprintf(sM->runName, "%s", restRun.GetOutputFileName().Data());

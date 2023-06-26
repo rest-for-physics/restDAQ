@@ -10,7 +10,7 @@
 
 <TRestRun name="DummyDAQ" title="DUMMY DAQ" verboseLevel="info">
 	<parameter name="experiment" value="Test"/>
-	<parameter name="runNumber" value="auto"/>
+	<!--parameter name="runNumber" value="-1"/-->
 	<parameter name="runTag" value="DUMMY"/>
 	<!--parameter name="runType" value="auto"/-->
 	<parameter name="runDescription" value=""/>
