@@ -4,6 +4,7 @@
 
 #include "TRestDAQGUI.h"
 #include "TRESTDAQManager.h"
+#include "TRestStringHelper.h"
 
 ClassImp(TRestDAQGUI);
 
@@ -213,7 +214,7 @@ void TRestDAQGUI::SetInputs() {
     TGHorizontalFrame* pressureFrame = new TGHorizontalFrame(fInputParam, 200, 20, kLHintsCenterX);
     pressureLabel = new TGLabel(pressureFrame, "Pressure:");
     pressureEntry = new TGTextEntry(pressureFrame, "        0");
-    pressureEntry->SetText(std::to_string(pressure).c_str());
+    pressureEntry->SetText(StringWithPrecision(pressure, 3).c_str() );
 
     pressureEntry->Connect("TextChanged(char *)", "TRestDAQGUI", this, "UpdatePressure()");
 
@@ -344,12 +345,13 @@ void TRestDAQGUI::VerifyEventsEntry(){
 void TRestDAQGUI::UpdateDrift(){
 
   drift = std::atoi(driftFieldEntry->GetText());
-
+  driftFieldEntry->SetText(std::to_string(drift).c_str());
 }
 
 void TRestDAQGUI::UpdateMesh(){
 
   mesh = std::atoi(meshVoltageEntry->GetText());
+  meshVoltageEntry->SetText(std::to_string(mesh).c_str());
 
 }
 
@@ -387,7 +389,7 @@ void TRestDAQGUI::StartPressed() {
     nEvents = std::atoi(nEventsEntry->GetText());
     mem->nEvents = nEvents;
 
-    std::string tag = runTag + "_Vm_"+std::to_string(mesh) + "_Vd_" + std::to_string(drift) + "_Pr_" +std::to_string(pressure);
+    std::string tag = runTag + "_Vm_"+std::to_string(mesh) + "_Vd_" + std::to_string(drift) + "_Pr_" + StringWithPrecision(pressure, 3);
 
     sprintf(mem->runTag, tag.c_str());
 
@@ -555,9 +557,7 @@ void TRestDAQGUI::UpdateOutputs() {
     oldTime = tNow;
     oldEvents = eventCount;
 
-    std::stringstream ss;
-    ss << std::fixed << std::setprecision(2) << r;
-    tmp = "Rate " + ss.str() + " Hz";
+    tmp = "Rate " + StringWithPrecision(r, 3) + " Hz";
 
     if (tmp != rateLabel->GetText()->Data()) rateLabel->SetText(tmp.c_str());
 

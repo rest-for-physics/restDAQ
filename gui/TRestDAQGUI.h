@@ -71,7 +71,8 @@ class TRestDAQGUI {
     static inline double tNow, startTimeEvent;
     static inline int rateGraphCounter = 0;
 
-    static inline Int_t eventCount = 0, oldEvents = 0, nEvents = 0, drift = 0, mesh = 0, pressure = 0;
+    static inline Int_t eventCount = 0, oldEvents = 0, nEvents = 0, drift = 0, mesh = 0;
+    static inline Float_t pressure = 0;
     static inline Int_t type = 0;
 
     static inline TH1* pulses = nullptr;
