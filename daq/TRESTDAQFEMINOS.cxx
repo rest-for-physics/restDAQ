@@ -427,7 +427,7 @@ void TRESTDAQFEMINOS::ReceiveThread( std::vector<FEMProxy> *FEMA ) {
                 } else {
                   std::unique_lock<std::mutex> lock_mem(FEM.mutex_mem);
                   //const std::deque<uint16_t> frame (&buf_rcv[1], &buf_rcv[size -1]);
-                  FEM.buffer.insert(FEM.buffer.end(), &buf_rcv[3], &buf_rcv[size -1]);//Skip 2 first words
+                  FEM.buffer.insert(FEM.buffer.end(), &buf_rcv[1], &buf_rcv[size -1]);
                   int bufferSize = FEM.buffer.size();
                   lock_mem.unlock();
                     if (verboseLevel >= TRestStringOutput::REST_Verbose_Level::REST_Debug)

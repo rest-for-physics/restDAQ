@@ -13,29 +13,11 @@ Based on mclient program from Denis Calvet
 #define __TREST_DAQ_FEMINOS__
 
 #include "TRESTDAQ.h"
-#include "TRESTDAQSocket.h"
+#include "FEMProxy.h"
 
 #include <iostream>
 #include <thread>
 #include <memory>
-#include <deque>
-
-class FEMProxy : public TRESTDAQSocket {
-  
-  public:
-    FEMProxy(){ }
-    bool pendingEvent=false;
-    TRestRawDAQMetadata::FECMetadata fecMetadata;
-    //std::atomic_int
-    int cmd_sent=0;
-    //std::atomic_int
-    int cmd_rcv=0;
-
-    std::deque <uint16_t> buffer;
-
-    inline static std::mutex mutex_socket;
-    inline static std::mutex mutex_mem;
-};
 
 class TRESTDAQFEMINOS : public TRESTDAQ {
   public:

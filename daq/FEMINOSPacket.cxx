@@ -151,10 +151,10 @@ void FEMINOSPacket::DataPacket_Print (uint16_t *fr, const uint16_t &size){
       printf("Event_Count %d\n", evC);
 
     } else if ((*fr & PFX_4_BIT_CONTENT_MASK) == PFX_END_OF_EVENT){
-      uint32_t size_ev = ( GET_EOE_SIZE(*fr)) << 16;
+      uint32_t size_ev = (( GET_EOE_SIZE(*fr)) << 16 ) & 0xFFFF0000;
       fr++;
       sz_rd++;
-      size_ev |= *fr;
+      size_ev |= *fr & 0xFFFF;
       fr++;
       sz_rd++;
       printf("----- End of Event ----- (size %d bytes)\n", size);
@@ -291,15 +291,18 @@ bool FEMINOSPacket::GetNextEvent(std::deque <uint16_t> &buffer, TRestRawSignalEv
   while (!endOfEvent && !buffer.empty()){
     //std::cout<<"Val 0x"<<std::hex<<buffer.front()<<std::dec<<" " <<buffer.front()<<std::endl;
 
-    //TimeStamp and Event Count, once for every event
-    if ((buffer.front() & PFX_4_BIT_CONTENT_MASK) == PFX_START_OF_EVENT){
+    if ((buffer.front() & PFX_9_BIT_CONTENT_MASK) == PFX_START_OF_DFRAME){
+      buffer.pop_front();
+      //std::cout<<"START OF DFRAME filled with "<< buffer.front() <<" bytes"<<std::endl;
+      buffer.pop_front();
+    } else if ((buffer.front() & PFX_4_BIT_CONTENT_MASK) == PFX_START_OF_EVENT){
       //std::cout<<"START OF EVENT "<<std::endl;
       buffer.pop_front();
-      tS = buffer.front();
+      tS = buffer.front() & 0xFFFF;
       buffer.pop_front();
-      tS |= ( buffer.front() << 16);
+      tS |= ( buffer.front() << 16) & 0xFFFF0000;
       buffer.pop_front();
-      tS |= ( buffer.front() << 24);
+      tS |= ( buffer.front() << 24) & 0xFFFF00000000;
       buffer.pop_front();
 
       //Event count
@@ -308,16 +311,12 @@ bool FEMINOSPacket::GetNextEvent(std::deque <uint16_t> &buffer, TRestRawSignalEv
       ev_count |=  ( buffer.front() << 16);
       buffer.pop_front();
 
-      //std::cout<<"EvCnt "<<ev_count<<" TS "<<(double)tS <<std::endl;
+      //std::cout<<"EvCnt "<<ev_count<<" TS "<<tS <<std::endl;
     } else if ((buffer.front() & PFX_14_BIT_CONTENT_MASK) == PFX_CARD_CHIP_CHAN_HIT_CNT){
       //printf( "Card %02d Chip %01d Channel_Hit_Count %02d\n", GET_CARD_IX(buffer.front()), GET_CHIP_IX(buffer.front()), GET_CHAN_IX(buffer.front()) );
       buffer.pop_front();
     } else if ((buffer.front() & PFX_12_BIT_CONTENT_MASK) == PFX_CHIP_LAST_CELL_READ){
-      
-      for(int i=0;i<4;i++){
-        //printf( "Chip %01d Last_Cell_Read %03d (0x%03x)\n",GET_LST_READ_CELL_CHIP_IX(buffer.front()), GET_LST_READ_CELL(buffer.front()), GET_LST_READ_CELL(buffer.front()));
-          buffer.pop_front();
-      }
+      buffer.pop_front();
     } else if ( (buffer.front() & PFX_14_BIT_CONTENT_MASK) == PFX_CARD_CHIP_CHAN_HIT_IX ) {
       uint16_t cardID = GET_CARD_IX(buffer.front());
       uint16_t chipID = GET_CHIP_IX(buffer.front());
@@ -338,6 +337,7 @@ bool FEMINOSPacket::GetNextEvent(std::deque <uint16_t> &buffer, TRestRawSignalEv
               //std::cout<<"TimeBin "<<timeBin<<" "<<GET_ADC_DATA(buffer.front())<<std::endl;
             }
           buffer.pop_front();
+          if(buffer.empty())break;
         }
 
       TRestRawSignal rawSignal(physChannel, sData);
@@ -345,12 +345,12 @@ bool FEMINOSPacket::GetNextEvent(std::deque <uint16_t> &buffer, TRestRawSignalEv
 
     } else if ( (buffer.front() & PFX_4_BIT_CONTENT_MASK) == PFX_END_OF_EVENT ){
       endOfEvent=true;
-      //std::cout<<"END OF EVENT ";
+      //std::cout<<"END OF EVENT "<<std::endl;
       buffer.pop_front();
       //std::cout<<" event size "<<buffer.front()<<std::endl;
       buffer.pop_front();//Skip event size
       break;
-    } else if ( (buffer.front() & PFX_4_BIT_CONTENT_MASK) == PFX_END_OF_FRAME ){
+    } else if ( (buffer.front() & PFX_0_BIT_CONTENT_MASK) == PFX_END_OF_FRAME ){
       //std::cout<<" END OF FRAME "<<std::endl;
       buffer.pop_front();
       break;
