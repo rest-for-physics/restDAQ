@@ -35,9 +35,9 @@ endif ()
 #-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 #Set include and lib
 if(DEFINED rest_include_dirs)
-	set(incdir ${PROJECT_SOURCE_DIR}/include ${ROOT_INCLUDE_DIRS} ${rest_include_dirs})
+	set(incdir ${PROJECT_SOURCE_DIR}/daq ${ROOT_INCLUDE_DIRS} ${rest_include_dirs})
 else()
-	set(incdir ${PROJECT_SOURCE_DIR}/include ${ROOT_INCLUDE_DIRS} ${REST_PATH}/include)
+	set(incdir ${PROJECT_SOURCE_DIR}/daq ${ROOT_INCLUDE_DIRS} ${REST_PATH}/include)
 endif()
 
 
@@ -50,7 +50,7 @@ add_subdirectory(gui)
 #-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 #Add execuatable and link to restDAQ libraries
 add_executable(restDAQManager restDAQManager.cxx)
-target_link_libraries(restDAQManager LINK_PUBLIC RESTDAQ ${lnklib})
+target_link_libraries(restDAQManager LINK_PUBLIC RestDAQ ${lnklib})
 
 #----------------------------------------------------------------------------
 # Copy restDAQManager to the install directory

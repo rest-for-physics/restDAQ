@@ -13,7 +13,7 @@ add_library(RestDAQGUI SHARED TRestDAQGUIMetadata.cxx TRestDAQGUI.cxx G__TRestDA
 
 target_include_directories(RestDAQGUI PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${rest_include_dirs})
 
-target_link_libraries(RestDAQGUI RESTDAQ ${lnklib} -lpthread RestRaw)
+target_link_libraries(RestDAQGUI RestDAQ ${lnklib} -lpthread RestRaw)
 
 install(TARGETS RestDAQGUI DESTINATION lib)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libTRestDAQGUI_rdict.pcm DESTINATION lib)
