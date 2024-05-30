@@ -53,7 +53,7 @@ void TRESTDAQManager::startUp() {
 
   TRestRawDAQMetadata daqMetadata(sM->cfgFile);
 
-  sM->status = 1;
+  sM->status = 2;
   DetachSharedMemory(&sM);
 
     try{
@@ -186,9 +186,9 @@ void TRESTDAQManager::dataTaking() {
           if(daq){
             if(parentRunNumber == 0){
               daq->configure();
-              std::cout << "Electronics configured, starting data taking run type " << std::endl;
+              std::cout << "Electronics configured, starting data taking run type "<<daqMetadata.GetAcquisitionType() << std::endl;
             }
-            daq->startDAQ();  // Should wait till completion or stopped
+            daq->startDAQ(parentRunNumber == 0);  // Should wait till completion or stopped
             daq->stopDAQ();
           }
       } catch(const TRESTDAQException& e) {
@@ -302,6 +302,7 @@ void TRESTDAQManager::InitializeSharedMemory(sharedMemoryStruct* sM) {
     sprintf(sM->cfgFile, "none");
     sprintf(sM->runTag, "none");
     sprintf(sM->runName, "none");
+    sprintf(sM->runType, "none");
     sM->startDAQ = 0;
     sM->startUp = 0;
     sM->status = 0;

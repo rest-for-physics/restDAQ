@@ -21,13 +21,13 @@ class TRESTDAQDCC : public TRESTDAQ {
     TRESTDAQDCC(TRestRun* rR, TRestRawDAQMetadata* dM);
 
     void configure() override;
-    void startDAQ() override;
+    void startDAQ(bool configure=true) override;
     void stopDAQ() override;
     void initialize() override;
 
    private:
     void pedestal();
-    void dataTaking();
+    void dataTaking(bool configure=true);
     DCCPacket::packetReply SendCommand(const char* cmd, DCCPacket::packetType type = DCCPacket::packetType::ASCII, size_t nPackets = 0, DCCPacket::packetDataType dataType = DCCPacket::packetDataType::NONE);
 
     void waitForTrigger();

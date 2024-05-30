@@ -17,6 +17,7 @@ void help() {
     std::cout << "    --e       : Exit manager" << std::endl;
     std::cout << "    --s       : Stop run (if ongoing)" << std::endl;
     std::cout << "    --c       : Set configFile (single run)" << std::endl;
+    std::cout << "    --u       : Start up electronics (FEMINOS or ARC)" << std::endl;
     std::cout << "    --h       : Print this help" << std::endl;
     std::cout << "If no arguments are provided it starts at infinite loop which is controller via shared memory" << std::endl;
 }

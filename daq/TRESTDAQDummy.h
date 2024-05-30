@@ -17,7 +17,7 @@ class TRESTDAQDummy : public TRESTDAQ {
     TRESTDAQDummy(TRestRun* rR, TRestRawDAQMetadata* dM);
 
     void configure() override;
-    void startDAQ() override;
+    void startDAQ(bool configure=true) override;
     void stopDAQ() override;
     void initialize() override;
 };

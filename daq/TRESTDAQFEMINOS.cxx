@@ -12,6 +12,7 @@ Author: JuanAn Garcia 18/08/2021
 
 
 std::atomic<bool> TRESTDAQFEMINOS::stopReceiver(false);
+std::atomic<bool> TRESTDAQFEMINOS::isPed(false);
 
 TRESTDAQFEMINOS::TRESTDAQFEMINOS(TRestRun* rR, TRestRawDAQMetadata* dM) : TRESTDAQ(rR, dM) { initialize(); }
 
@@ -41,6 +42,7 @@ void TRESTDAQFEMINOS::initialize() {
     }
 
   //Start receive and event builder threads
+  stopReceiver=false;
   receiveThread = std::thread( TRESTDAQFEMINOS::ReceiveThread, &FEMArray);
   eventBuilderThread = std::thread( TRESTDAQFEMINOS::EventBuilderThread, &FEMArray, restRun, &fSignalEvent);
 }
@@ -154,7 +156,7 @@ void TRESTDAQFEMINOS::configure() {
     }
 }
 
-void TRESTDAQFEMINOS::startDAQ() {
+void TRESTDAQFEMINOS::startDAQ(bool configure) {
     auto rT = daq_metadata_types::acqTypes_map.find(std::string(daqMetadata->GetAcquisitionType()));
     if (rT == daq_metadata_types::acqTypes_map.end()) {
         std::cout << "Unknown acquisition type " << daqMetadata->GetAcquisitionType() << " skipping" << std::endl;
@@ -166,7 +168,7 @@ void TRESTDAQFEMINOS::startDAQ() {
     if (rT->second == daq_metadata_types::acqTypes::PEDESTAL) {
         pedestal();
     } else {
-        dataTaking();
+        dataTaking(configure);
     }
 }
 
@@ -234,67 +236,68 @@ void TRESTDAQFEMINOS::pedestal() {
   BroadcastCommand("serve_target 1",FEMArray);
 }
 
-void TRESTDAQFEMINOS::dataTaking() {
+void TRESTDAQFEMINOS::dataTaking(bool configure) {
   std::cout << "Starting data taking run" << std::endl;
   //BroadcastCommand("daq 0x000000 F",FEMArray,false);
-  BroadcastCommand("daq 0xFFFFFF F",FEMArray);
-  BroadcastCommand("sca enable 0",FEMArray);
-  std::this_thread::sleep_for(std::chrono::seconds(1));
-  BroadcastCommand("serve_target 0",FEMArray);
-  std::this_thread::sleep_for(std::chrono::seconds(4));
-  //Readout settings
-  BroadcastCommand("modify_hit_reg 0",FEMArray);
-  BroadcastCommand("emit_hit_cnt 1",FEMArray);
-  BroadcastCommand("emit_empty_ch 0",FEMArray);
-  BroadcastCommand("emit_lst_cell_rd 1",FEMArray);
-  BroadcastCommand("keep_rst 1",FEMArray);
-  BroadcastCommand("skip_rst 0",FEMArray);
-  //AGET settings
-    if(compressMode == daq_metadata_types::compressModeTypes::ALLCHANNELS || compressMode == daq_metadata_types::compressModeTypes::ZEROSUPPRESSION){
-      BroadcastCommand("aget * mode 0x1",FEMArray);//Mode: 0x0: hit/selected channels 0x1:all channels
-    } else if(compressMode == daq_metadata_types::compressModeTypes::TRIGGEREDCHANNELS){
-      BroadcastCommand("aget * mode 0x0",FEMArray);//Mode: 0x0: hit/selected channels 0x1:all channels    
-    }
-  BroadcastCommand("aget * tst_digout 1",FEMArray);//??
+  if(configure){
+    BroadcastCommand("daq 0xFFFFFF F",FEMArray);
+    BroadcastCommand("sca enable 0",FEMArray);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    BroadcastCommand("serve_target 0",FEMArray);
+    std::this_thread::sleep_for(std::chrono::seconds(4));
+    //Readout settings
+    BroadcastCommand("modify_hit_reg 0",FEMArray);
+    BroadcastCommand("emit_hit_cnt 1",FEMArray);
+    BroadcastCommand("emit_empty_ch 0",FEMArray);
+    BroadcastCommand("emit_lst_cell_rd 1",FEMArray);
+    BroadcastCommand("keep_rst 1",FEMArray);
+    BroadcastCommand("skip_rst 0",FEMArray);
+    //AGET settings
+      if(compressMode == daq_metadata_types::compressModeTypes::ALLCHANNELS || compressMode == daq_metadata_types::compressModeTypes::ZEROSUPPRESSION){
+        BroadcastCommand("aget * mode 0x1",FEMArray);//Mode: 0x0: hit/selected channels 0x1:all channels
+      } else if(compressMode == daq_metadata_types::compressModeTypes::TRIGGEREDCHANNELS){
+        BroadcastCommand("aget * mode 0x0",FEMArray);//Mode: 0x0: hit/selected channels 0x1:all channels    
+      }
+    BroadcastCommand("aget * tst_digout 1",FEMArray);//??
   
-  BroadcastCommand("subtract_ped 1",FEMArray);
+    BroadcastCommand("subtract_ped 1",FEMArray);
 
-    if(compressMode == daq_metadata_types::compressModeTypes::ZEROSUPPRESSION){
-      BroadcastCommand("zero_suppress 1",FEMArray);
-      BroadcastCommand("zs_pre_post 8 4",FEMArray);
-    } else {
-      BroadcastCommand("zero_suppress 0",FEMArray);
-      BroadcastCommand("zs_pre_post 8 4",FEMArray);
-    }
-
-    //Event generator
-    BroadcastCommand("clr tstamp",FEMArray);
-    BroadcastCommand("clr evnct",FEMArray);
-    BroadcastCommand("event_limit 0x0",FEMArray);//Infinite
-      if (triggerType ==  daq_metadata_types::triggerTypes::INTERNAL){
-        BroadcastCommand("trig_rate 1 50",FEMArray);
-        BroadcastCommand("trig_enable 0x1",FEMArray);
-      } else if (triggerType ==  daq_metadata_types::triggerTypes::TCM) {
-        BroadcastCommand("trig_enable 0x8",FEMArray);//tcm???
-      } else if (triggerType ==  daq_metadata_types::triggerTypes::AUTO) {
-        BroadcastCommand("trig_enable 0x0",FEMArray);
+      if(compressMode == daq_metadata_types::compressModeTypes::ZEROSUPPRESSION){
+        BroadcastCommand("zero_suppress 1",FEMArray);
+        BroadcastCommand("zs_pre_post 8 4",FEMArray);
+      } else {
+        BroadcastCommand("zero_suppress 0",FEMArray);
+        BroadcastCommand("zs_pre_post 8 4",FEMArray);
       }
 
-    for (auto &FEM : FEMArray){
-      char cmd[200];
-        for(int a=0;a<TRestRawDAQMetadata::nAsics;a++){
-          if(!FEM.fecMetadata.asic_isActive[a])continue;
-          sprintf(cmd, "aget %d dac 0x%X",a, FEM.fecMetadata.asic_coarseThr[a]);
-          SendCommand(cmd,FEM);
-          sprintf(cmd, "aget %d threshold 0x%X",a, FEM.fecMetadata.asic_fineThr[a]);
-          SendCommand(cmd,FEM);
-          sprintf(cmd, "aget %d mult_thr %d",a, FEM.fecMetadata.asic_multThr[a]);
-          SendCommand(cmd,FEM);
-          sprintf(cmd, "aget %d mult_limit %d",a, FEM.fecMetadata.asic_multLimit[a]);
-          SendCommand(cmd,FEM);
+      //Event generator
+      BroadcastCommand("clr tstamp",FEMArray);
+      BroadcastCommand("clr evnct",FEMArray);
+      BroadcastCommand("event_limit 0x0",FEMArray);//Infinite
+        if (triggerType ==  daq_metadata_types::triggerTypes::INTERNAL){
+          BroadcastCommand("trig_rate 1 50",FEMArray);
+          BroadcastCommand("trig_enable 0x1",FEMArray);
+        } else if (triggerType ==  daq_metadata_types::triggerTypes::TCM) {
+          BroadcastCommand("trig_enable 0x8",FEMArray);//tcm???
+        } else if (triggerType ==  daq_metadata_types::triggerTypes::AUTO) {
+          BroadcastCommand("trig_enable 0x0",FEMArray);
         }
-    }
 
+      for (auto &FEM : FEMArray){
+        char cmd[200];
+          for(int a=0;a<TRestRawDAQMetadata::nAsics;a++){
+            if(!FEM.fecMetadata.asic_isActive[a])continue;
+            sprintf(cmd, "aget %d dac 0x%X",a, FEM.fecMetadata.asic_coarseThr[a]);
+            SendCommand(cmd,FEM);
+            sprintf(cmd, "aget %d threshold 0x%X",a, FEM.fecMetadata.asic_fineThr[a]);
+            SendCommand(cmd,FEM);
+            sprintf(cmd, "aget %d mult_thr %d",a, FEM.fecMetadata.asic_multThr[a]);
+            SendCommand(cmd,FEM);
+            sprintf(cmd, "aget %d mult_limit %d",a, FEM.fecMetadata.asic_multLimit[a]);
+            SendCommand(cmd,FEM);
+          }
+        }
+     }
     BroadcastCommand("serve_target 1",FEMArray);//1: send to DAQ
     BroadcastCommand("sca enable 1",FEMArray);//Enable data taking
     BroadcastCommand("daq 0xFFFFFE F",FEMArray, false);//DAQ request
@@ -304,6 +307,7 @@ void TRESTDAQFEMINOS::dataTaking() {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
       }
     BroadcastCommand("sca enable 0",FEMArray);
+    BroadcastCommand("serve_target 0",FEMArray);
     BroadcastCommand("daq 0xFFFFFF F",FEMArray,false);//Stop DAQ request
     std::this_thread::sleep_for(std::chrono::milliseconds(500));//Wait some time till DAQ command is propagated
 }
@@ -427,7 +431,7 @@ void TRESTDAQFEMINOS::ReceiveThread( std::vector<FEMProxy> *FEMA ) {
                 } else {
                   std::unique_lock<std::mutex> lock_mem(FEM.mutex_mem);
                   //const std::deque<uint16_t> frame (&buf_rcv[1], &buf_rcv[size -1]);
-                  FEM.buffer.insert(FEM.buffer.end(), &buf_rcv[1], &buf_rcv[size -1]);
+                  FEM.buffer.insert(FEM.buffer.end(), &buf_rcv[1], &buf_rcv[size]);
                   int bufferSize = FEM.buffer.size();
                   lock_mem.unlock();
                     if (verboseLevel >= TRestStringOutput::REST_Verbose_Level::REST_Debug)
@@ -446,49 +450,55 @@ void TRESTDAQFEMINOS::ReceiveThread( std::vector<FEMProxy> *FEMA ) {
 }
 
 void TRESTDAQFEMINOS::EventBuilderThread(std::vector<FEMProxy> *FEMA, TRestRun *rR, TRestRawSignalEvent* sEvent){
+ sEvent->Initialize();
 
-  sEvent->Initialize();
+  uint32_t ev_count=0;
+  uint64_t ts=0;
 
-  uint32_t ev_count;
-  uint64_t ts;
+  bool newEvent = true;
+  bool emptyBuffer = true;
 
-  bool newEvent = false;
-  bool pendingEvent = false;
-
-  while (!stopReceiver ){
-
+  do {
+    emptyBuffer=true;
       for (auto &FEM : *FEMA){
         std::unique_lock<std::mutex> lock(FEM.mutex_mem);
-        if(!FEM.buffer.empty()){//Do nothing
-          if(FEM.pendingEvent){//Wait till we reach end of event for all the FEMINOS
+        emptyBuffer &= FEM.buffer.empty();
+        if(!FEM.buffer.empty()){
+          if(FEM.pendingEvent){//Wait till we reach end of event for all the ARC
             FEM.pendingEvent = !FEMINOSPacket::GetNextEvent( FEM.buffer, sEvent, ts, ev_count);
-          } else if( !FEM.pendingEvent && !pendingEvent) {
-            FEM.pendingEvent = !FEMINOSPacket::GetNextEvent( FEM.buffer, sEvent, ts, ev_count);
-            newEvent=true;
           }
         }
         lock.unlock();
       }
 
-        pendingEvent=false;
-
+        newEvent = true;
         for (const auto &FEM : *FEMA){
-          //std::unique_lock<std::mutex> lock(FEM.mutex_mem);
-            if(FEM.pendingEvent)pendingEvent=true;//Check if the event is pending
-          //lock.unlock();
+            newEvent &= !FEM.pendingEvent;//Check if the event is pending
         }
 
-      if(newEvent && !pendingEvent){//Save Event if closed
+      if(newEvent){//Save Event if closed
         if(rR){
           sEvent->SetID(ev_count);
           sEvent->SetTime( rR->GetStartTimestamp() + (double) ts * 2E-8 );
           FillTree(rR, sEvent);
           sEvent->Initialize();
-          newEvent = false;
           if(event_cnt%100 == 0)std::cout<<"Events "<<event_cnt<<std::endl;
+            for (auto &FEM : *FEMA)FEM.pendingEvent = true;
         }
       }
-  }
+
+    if(emptyBuffer)std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  } while(!(emptyBuffer && stopReceiver));
+
+  //Save pedestal event
+  if(isPed && emptyBuffer){
+        if(rR){
+          sEvent->SetID(ev_count);
+          sEvent->SetTime( rR->GetStartTimestamp() + (double) ts * 2E-8 );
+          FillTree(rR, sEvent);
+          sEvent->Initialize();
+        }
+      }
 
 }
 

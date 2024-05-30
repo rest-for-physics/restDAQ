@@ -21,7 +21,7 @@ void TRESTDAQDummy::initialize() {}
 
 void TRESTDAQDummy::configure() { std::cout << "Configuring readout" << std::endl; }
 
-void TRESTDAQDummy::startDAQ() {
+void TRESTDAQDummy::startDAQ(bool configure) {
     std::srand(static_cast<unsigned int>(std::time(nullptr)));
 
     while ( !abrt && !nextFile && (daqMetadata->GetNEvents() == 0 || event_cnt < daqMetadata->GetNEvents() ) ) {

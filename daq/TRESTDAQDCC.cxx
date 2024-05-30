@@ -90,12 +90,12 @@ void TRESTDAQDCC::configure() {
     // SendCommand("isobus 0x0F", -1);//Reset event counter, timestamp set eventType to test
 }
 
-void TRESTDAQDCC::startDAQ() {
+void TRESTDAQDCC::startDAQ(bool configure) {
 
     if ( acqType == daq_metadata_types::acqTypes::PEDESTAL) {
         pedestal();
     } else {
-        dataTaking();
+        dataTaking(configure);
     }
 }
 
@@ -149,14 +149,14 @@ void TRESTDAQDCC::pedestal() {
     FillTree(restRun, &fSignalEvent);
 }
 
-void TRESTDAQDCC::dataTaking() {
+void TRESTDAQDCC::dataTaking(bool configure) {
     std::cout << "Starting data taking run" << std::endl;
 
     char cmd[200];
     SendCommand("fem 0");  // Needed?
     // if(comp)SendCommand("skipempty 1", -1);//Skip empty frames in compress mode
     // else SendCommand("skipempty 0", -1);//Save empty frames if not
-    SendCommand("isobus 0x4F");  // Reset event counter, timestamp for type 11
+    if(configure)SendCommand("isobus 0x4F");  // Reset event counter, timestamp for type 11
 
     while ( !abrt && !nextFile && (daqMetadata->GetNEvents() == 0 || event_cnt < daqMetadata->GetNEvents())) {
         SendCommand("fem 0");

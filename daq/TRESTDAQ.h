@@ -27,7 +27,7 @@ class TRESTDAQ {
 
     // Pure virtual methods to start, stop and configure the DAQ
     virtual void configure() = 0;
-    virtual void startDAQ() = 0;
+    virtual void startDAQ(bool configure=true) = 0;
     virtual void stopDAQ() = 0;
     virtual void initialize() = 0;
     virtual void startUp(){};
