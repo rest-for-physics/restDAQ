@@ -181,6 +181,7 @@ namespace ARCPacket {
   uint32_t GetUInt32FromBufferInv(uint16_t *fr, int & sz_rd);
   bool GetNextEvent(std::deque <uint16_t> &buffer, TRestRawSignalEvent* sEvent, uint64_t &tS, uint32_t &ev_count);
   bool isDataFrame(uint16_t *fr);
+  bool isMFrame(uint16_t *fr);
 
 }
 

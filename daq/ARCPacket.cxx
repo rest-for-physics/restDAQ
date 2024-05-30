@@ -142,16 +142,45 @@ void ARCPacket::DataPacket_Print (uint16_t *fr, const uint16_t &size){
       r0 = GET_ASCII_LEN(*fr);
       fr++;
       sz_rd++;
-      printf("ASCII Msg length: %d\n",r0);
-        for (int j=0;j<r0/2; j++){
-          printf("%c%c", ((*fr) & 0xFF ),((*fr) >> 8) );
+      printf("ASCII Msg length: %d\n", r0);
+      std::string asciiMsg;
+      int j=0;
+        for (j=0;j<r0/2; j++){
+          asciiMsg += (char) (*fr & 0xFF);
+          asciiMsg += (char) (*fr & 0xFF00) >> 8;
           fr++;
           sz_rd++;
         }
-        if ((*fr) & 0x1){// Skip the null string parity
+        if (r0 & 0x1){
+          asciiMsg += (char) (*fr & 0xFF);
           fr++;
           sz_rd++;
         }
+      asciiMsg += "\0";
+      printf("%s\n", asciiMsg.c_str());
+      fr++;
+      sz_rd++;
+    } else if(*fr == PFX_LONG_ASCII_MSG) {
+      fr++;
+      sz_rd++;
+      r0 = (*fr);
+      printf("Long ASCII Msg length: %d\n", r0);
+      fr++;
+      sz_rd++;
+      std::string asciiMsg;
+      int j=0;
+        for (j=0;j<r0/2; j++){
+          asciiMsg += (char) (*fr & 0xFF);
+          asciiMsg += (char) ((*fr & 0xFF00) >> 8);
+          fr++;
+          sz_rd++;
+        }
+        if (r0 & 0x1){
+          asciiMsg += (char) (*fr & 0xFF);
+        }
+      std::cout<<asciiMsg<<std::endl;
+      fr++;
+      sz_rd++;
     } else if ((*fr & PFX_8_BIT_CONTENT_MASK) == PFX_START_OF_EVENT) {
       r0 =  GET_SOE_EV_TYPE(*fr);
       printf("-- Start of Event (Type %01d) --\n", r0);
@@ -234,6 +263,17 @@ void ARCPacket::DataPacket_Print (uint16_t *fr, const uint16_t &size){
       fr++;
       sz_rd++;
 
+    } else if ((*fr & PFX_0_BIT_CONTENT_MASK) == PFX_EXTD_CARD_CHIP_CHAN_H_MD) {
+      fr++;
+      sz_rd++;
+      r0 = GET_EXTD_CARD_IX(*fr);
+      r1 = GET_EXTD_CHIP_IX(*fr);
+      r2 = GET_EXTD_CHAN_IX(*fr);
+      fr++;
+      sz_rd++;
+      uint32_t mean = GetUInt32FromBufferInv(fr, sz_rd);fr+=2;
+      uint32_t std_dev = GetUInt32FromBufferInv(fr, sz_rd);fr+=2;
+      printf("Ped Card %02d Chip %01d Channel %02d Mean/Std_dev : %.2f  %.2f\n", r0, r1, r2, (float)mean/100., (float)std_dev/100.);
     } else if (*fr == PFX_SHISTO_BINS) {
       printf("Threshold Turn-on curve\n");
       fr++;
@@ -314,6 +354,7 @@ uint32_t ARCPacket::GetUInt32FromBufferInv(uint16_t *fr, int & sz_rd){
 bool ARCPacket::GetNextEvent(std::deque <uint16_t> &buffer, TRestRawSignalEvent* sEvent, uint64_t &tS, uint32_t &ev_count){
 
   bool endOfEvent = false;
+  //std::cout<<__PRETTY_FUNCTION__<<" START "<<buffer.size()<<std::endl;
   //std::cout<<__PRETTY_FUNCTION__<<"  "<<buffer.size()<<std::endl;
   while (!endOfEvent && !buffer.empty()){
     //std::cout<<"Val 0x"<<std::hex<<buffer.front()<<std::dec<<" " <<buffer.front()<<std::endl;
@@ -323,6 +364,33 @@ bool ARCPacket::GetNextEvent(std::deque <uint16_t> &buffer, TRestRawSignalEvent*
       buffer.pop_front();
       //std::cout<<"Start of DFRAME Size "<<buffer.front()<<" bytes"<<std::endl;
       buffer.pop_front();
+    } else if ((buffer.front() & PFX_9_BIT_CONTENT_MASK) == PFX_START_OF_MFRAME){
+      buffer.pop_front();
+      //std::cout<<"Start of MFRAME Size "<<buffer.front()<<" bytes"<<std::endl;
+      buffer.pop_front();
+    } else if ((buffer.front() & PFX_0_BIT_CONTENT_MASK) == PFX_EXTD_CARD_CHIP_CHAN_H_MD) {
+      std::vector<Short_t> sData;
+      buffer.pop_front();
+      uint16_t cardID = GET_EXTD_CARD_IX(buffer.front());
+      uint16_t chipID = GET_EXTD_CHIP_IX(buffer.front());
+      uint16_t chID = GET_EXTD_CHAN_IX(buffer.front());
+      int physChannel = chID + chipID*72 + cardID*288;
+      buffer.pop_front();
+      uint32_t mean = buffer.front();
+      sData.push_back(buffer.front());
+      buffer.pop_front();
+      mean |=  ( buffer.front() << 16);
+      sData.push_back(buffer.front());
+      buffer.pop_front();
+      uint32_t std_dev = buffer.front();
+      sData.push_back(buffer.front());
+      buffer.pop_front();
+      sData.push_back(buffer.front());
+      std_dev |=  ( buffer.front() << 16);
+      buffer.pop_front();
+      //printf("Ped Channel %02d Mean/Std_dev : %.2f  %.2f\n", physChannel, (float)mean/100., (float)std_dev/100.);
+      TRestRawSignal rawSignal(physChannel, sData);
+      sEvent->AddSignal(rawSignal);
     } else if ((buffer.front() & PFX_8_BIT_CONTENT_MASK) == PFX_START_OF_EVENT){
       //std::cout<<"START OF EVENT "<<std::endl;
       buffer.pop_front();
@@ -343,7 +411,7 @@ bool ARCPacket::GetNextEvent(std::deque <uint16_t> &buffer, TRestRawSignalEvent*
     } else if ((buffer.front() & PFX_9_BIT_CONTENT_MASK) == PFX_CHIP_CHAN_HIT_CNT) {
       //printf( "Card %02d Chip %01d Channel_Hit_Count %02d\n", GET_CARD_IX(buffer.front()), GET_CHIP_IX(buffer.front()), GET_CHAN_IX(buffer.front()) );
       buffer.pop_front();
-    } else if ((buffer.front() & PFX_12_BIT_CONTENT_MASK) == PFX_CHIP_LAST_CELL_READ) {
+    } else if ((buffer.front() & PFX_11_BIT_CONTENT_MASK) == PFX_CHIP_LAST_CELL_READ) {
       buffer.pop_front();
     } else if ( (buffer.front() & PFX_0_BIT_CONTENT_MASK) == PFX_EXTD_CARD_CHIP_CHAN_HIT_IX ) {
       buffer.pop_front();
@@ -376,11 +444,11 @@ bool ARCPacket::GetNextEvent(std::deque <uint16_t> &buffer, TRestRawSignalEvent*
       endOfEvent=true;
       buffer.pop_front();
       buffer.pop_front();
-      uint32_t event_size = buffer.front() & 0xFFFF;
+      //uint32_t event_size = buffer.front() & 0xFFFF;
       buffer.pop_front();
-      event_size |=  ( buffer.front() << 16) & 0xFFFF0000;
+      //event_size |=  ( buffer.front() << 16) & 0xFFFF0000;
       buffer.pop_front();
-      //std::cout<<"END OF EVENT with "<<event_size<< " bytes"<<std::endl;
+      //std::cout<<"END OF EVENT"<<std::endl;
       break;
     } else if ( (buffer.front() & PFX_0_BIT_CONTENT_MASK) == PFX_END_OF_FRAME ){
       //std::cout<<" END OF FRAME "<<std::endl;
@@ -400,6 +468,12 @@ bool ARCPacket::GetNextEvent(std::deque <uint16_t> &buffer, TRestRawSignalEvent*
 bool ARCPacket::isDataFrame(uint16_t *fr){
 
   return ((*fr & PFX_9_BIT_CONTENT_MASK) == PFX_START_OF_DFRAME);
+
+}
+
+bool ARCPacket::isMFrame(uint16_t *fr){
+
+  return ((*fr & PFX_9_BIT_CONTENT_MASK) == PFX_START_OF_MFRAME);
 
 }
 

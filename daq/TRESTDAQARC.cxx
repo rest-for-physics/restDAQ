@@ -12,6 +12,7 @@ Author: JuanAn Garcia 15/04/2024
 
 
 std::atomic<bool> TRESTDAQARC::stopReceiver(false);
+std::atomic<bool> TRESTDAQARC::isPed(false);
 
 TRESTDAQARC::TRESTDAQARC(TRestRun* rR, TRestRawDAQMetadata* dM) : TRESTDAQ(rR, dM) { initialize(); }
 
@@ -41,6 +42,7 @@ void TRESTDAQARC::initialize() {
     }
 
   //Start receive and event builder threads
+  stopReceiver=false;
   receiveThread = std::thread( TRESTDAQARC::ReceiveThread, &FEMArray);
   eventBuilderThread = std::thread( TRESTDAQARC::EventBuilderThread, &FEMArray, restRun, &fSignalEvent);
 }
@@ -97,8 +99,8 @@ void TRESTDAQARC::configure() {
 
   BroadcastCommand("sca cnt 0x200",FEMArray);
   BroadcastCommand("sca autostart 1",FEMArray);
-  BroadcastCommand("rst_len 0",FEMArray);
-  //BroadcastCommand("mmpol 0x3",FEMArray); //Needed?
+  BroadcastCommand("rst_len 1",FEMArray);
+  BroadcastCommand("mmpol 0x3",FEMArray); //Needed?
 
   //Test mode settings
   BroadcastCommand("keep_fco 0",FEMArray);
@@ -109,8 +111,8 @@ void TRESTDAQARC::configure() {
 
    //AGET settings
    for (auto &FEM : FEMArray){
-      SendCommand("aget * autoreset_bank 0x1",FEM);
-      SendCommand("aget * dis_multiplicity_out 0x0",FEM);
+      SendCommand("aget 3:0 autoreset_bank 0x1",FEM);
+      SendCommand("aget 3:0 dis_multiplicity_out 0x0",FEM);
         for(int a=0;a<TRestRawDAQMetadata::nAsics;a++){
           if(!FEM.fecMetadata.asic_isActive[a])continue;
             if(FEM.fecMetadata.asic_polarity[a] == 0){
@@ -126,11 +128,11 @@ void TRESTDAQARC::configure() {
             }
          }
 
-      SendCommand("aget * en_mkr_rst 0x0",FEM);
-      SendCommand("aget * rst_level 0x1",FEM);
-      SendCommand("aget * short_read 0x0",FEM);
-      SendCommand("aget * tst_digout 0x0",FEM);
-      SendCommand("aget * mode 0x1",FEM);
+      SendCommand("aget 3:0 en_mkr_rst 0x0",FEM);
+      SendCommand("aget 3:0 rst_level 0x1",FEM);
+      SendCommand("aget 3:0 short_read 0x0",FEM);
+      SendCommand("aget 3:0 tst_digout 0x0",FEM);
+      SendCommand("aget 3:0 mode 0x1",FEM);
 
         for(int a=0;a<TRestRawDAQMetadata::nAsics;a++){
           if(!FEM.fecMetadata.asic_isActive[a])continue;
@@ -139,30 +141,11 @@ void TRESTDAQARC::configure() {
           sprintf(cmd, "aget %d time 0x%X",a, (FEM.fecMetadata.asic_shappingTime[a] & 0xF) );  //Shapping time
           SendCommand(cmd,FEM);
         }
-      SendCommand("aget * dac 0x0",FEM);
-
-      //# Channel ena/disable (AGET only)
-      SendCommand("forceon_all 1",FEM);
-      SendCommand("forceoff * * 0x1",FEM);
-      SendCommand("forceon * * 0x0",FEM);
-        for(int a=0;a<TRestRawDAQMetadata::nAsics;a++){
-          if(!FEM.fecMetadata.asic_isActive[a])continue;
-            sprintf(cmd,"forceoff %d * 0x0",a);
-            SendCommand(cmd,FEM);
-            sprintf(cmd,"forceon %d * 0x1",a);
-            SendCommand(cmd,FEM);
-             for(int c=0;c<TRestRawDAQMetadata::nChannels;c++){
-               if(FEM.fecMetadata.asic_channelActive[a][c])continue;
-               sprintf(cmd,"forceoff %d %d 0x1",a,c);
-               SendCommand(cmd,FEM);
-               sprintf(cmd,"forceon %d %d 0x0",a,c);
-               SendCommand(cmd,FEM);
-             }
-        }
+      SendCommand("aget 3:0 dac 0x0",FEM);
     }
 }
 
-void TRESTDAQARC::startDAQ() {
+void TRESTDAQARC::startDAQ(bool configure) {
     auto rT = daq_metadata_types::acqTypes_map.find(std::string(daqMetadata->GetAcquisitionType()));
     if (rT == daq_metadata_types::acqTypes_map.end()) {
         std::cout << "Unknown acquisition type " << daqMetadata->GetAcquisitionType() << " skipping" << std::endl;
@@ -174,7 +157,8 @@ void TRESTDAQARC::startDAQ() {
     if (rT->second == daq_metadata_types::acqTypes::PEDESTAL) {
         pedestal();
     } else {
-        dataTaking();
+        dataTaking(configure);
+        isPed=false;
     }
 }
 
@@ -186,19 +170,24 @@ void TRESTDAQARC::pedestal() {
   BroadcastCommand("emit_empty_ch 1",FEMArray);
   BroadcastCommand("keep_rst 1",FEMArray);
   BroadcastCommand("skip_rst 0",FEMArray);
+  //# Channel ena/disable (AGET only)
+  BroadcastCommand("forceon_all 1",FEMArray);
+  BroadcastCommand("forceoff 3:0 * 0x0",FEMArray);
+  BroadcastCommand("forceon 3:0 * 0x1",FEMArray);
+
   //Pedestal Thresholds and Zero-suppression
-  BroadcastCommand("ped * * 0x0",FEMArray);
+  BroadcastCommand("ped 3:0 * 0x0",FEMArray);
   BroadcastCommand("subtract_ped 0",FEMArray);
   BroadcastCommand("zero_suppress 0",FEMArray);
   BroadcastCommand("zs_pre_post 0 0",FEMArray);
   BroadcastCommand("thr * * 0x0",FEMArray);
   //Event generator
-  BroadcastCommand("event_limit 0x3",FEMArray);//# Event limit: 0x0:infinite; 0x1:1; 0x2:10; 0x3:100; 0x4: 1000; 0x5:10000; 0x6:100000; 0x7:1000000
+  BroadcastCommand("event_limit 0x2",FEMArray);//# Event limit: 0x0:infinite; 0x1:1; 0x2:10; 0x3:100; 0x4: 1000; 0x5:10000; 0x6:100000; 0x7:1000000
   BroadcastCommand("trig_rate 1 10",FEMArray);//# Range: 0:0.1Hz-10Hz 1:10Hz-1kHz 2:100Hz-10kHz 3:1kHz-100kHz
-  BroadcastCommand("trig_enable 0x1",FEMArray);
+  BroadcastCommand("trig_ena 0x1",FEMArray);
   //Pedestal Histograms
-  BroadcastCommand("hped offset * * 0",FEMArray);
-  BroadcastCommand("hped clr * *",FEMArray);
+  BroadcastCommand("hped 3:0 * offset 0",FEMArray);
+  BroadcastCommand("hped 3:0 * clr",FEMArray);
   //Data server target: 0:drop data; 1:send to DAQ; 2:feed to pedestal histos; 3:feed to hit channel histos 
   BroadcastCommand("serve_target 2",FEMArray);
   BroadcastCommand("sca enable 1",FEMArray);
@@ -208,26 +197,35 @@ void TRESTDAQARC::pedestal() {
     for (auto &FEM : FEMArray){
       for(int a=0;a<4;a++){
         if(!FEM.fecMetadata.asic_isActive[a])continue;
-        sprintf(cmd, "hped getsummary %d *", a );
-        SendCommand(cmd,FEM);
-        //Set pedestal equalization
-        sprintf(cmd, "hped centermean %d * %d", a , FEM.fecMetadata.asic_pedCenter[a] );
+        sprintf(cmd, "hped %d * getsummary", a );
         SendCommand(cmd,FEM);
       }
     }
 
+  for (auto &FEM : FEMArray){
+      for(int a=0;a<4;a++){
+        if(!FEM.fecMetadata.asic_isActive[a])continue;
+        //Set pedestal equalization
+        sprintf(cmd, "hped %d * centermean %d", a , FEM.fecMetadata.asic_pedCenter[a] );
+        SendCommand(cmd,FEM);
+      }
+    }
+
+  isPed=true;
+
   BroadcastCommand("subtract_ped 1",FEMArray);
-  BroadcastCommand("hped clr * *",FEMArray);
+  BroadcastCommand("hped 3:0 * clr",FEMArray);
   BroadcastCommand("sca enable 1",FEMArray);
   std::this_thread::sleep_for(std::chrono::seconds(15));// Wait pedestal accumulation completion
   BroadcastCommand("sca enable 0",FEMArray);
+  BroadcastCommand("trig_ena 0x0",FEMArray);
     for (auto &FEM : FEMArray){
       for(int a=0;a<TRestRawDAQMetadata::nAsics;a++){
         if(!FEM.fecMetadata.asic_isActive[a])continue;
-        sprintf(cmd, "hped getsummary %d *", a );
+        sprintf(cmd, "hped %d * getsummary", a );
         SendCommand(cmd,FEM);
         //Set threshold
-        sprintf(cmd, "hped setthr %d * %d %.1f", a , FEM.fecMetadata.asic_pedCenter[a], FEM.fecMetadata.asic_pedThr[a] );
+        sprintf(cmd, "hped %d * setthr %d %.1f", a , FEM.fecMetadata.asic_pedCenter[a], FEM.fecMetadata.asic_pedThr[a] );
         SendCommand(cmd,FEM);
       }
     }
@@ -236,66 +234,67 @@ void TRESTDAQARC::pedestal() {
   BroadcastCommand("serve_target 1",FEMArray);
 }
 
-void TRESTDAQARC::dataTaking() {
+void TRESTDAQARC::dataTaking(bool configure) {
   std::cout << "Starting data taking run" << std::endl;
-  //BroadcastCommand("daq 0x000000 F",FEMArray,false);
-  BroadcastCommand("DAQ 0",FEMArray);
-  BroadcastCommand("daq 0xFFFFFF F",FEMArray);
-  BroadcastCommand("sca enable 0",FEMArray);
-  std::this_thread::sleep_for(std::chrono::seconds(1));
-  BroadcastCommand("serve_target 0",FEMArray);
-  std::this_thread::sleep_for(std::chrono::seconds(4));
-  //Readout settings
-  BroadcastCommand("modify_hit_reg 0",FEMArray);
-  BroadcastCommand("emit_hit_cnt 1",FEMArray);
-  BroadcastCommand("emit_empty_ch 1",FEMArray);
-  BroadcastCommand("emit_lst_cell_rd 1",FEMArray);
-  BroadcastCommand("keep_rst 1",FEMArray);
-  BroadcastCommand("skip_rst 0",FEMArray);
-  //AGET settings
-    if(compressMode == daq_metadata_types::compressModeTypes::ALLCHANNELS || compressMode == daq_metadata_types::compressModeTypes::ZEROSUPPRESSION){
-      BroadcastCommand("aget * mode 0x1",FEMArray);//Mode: 0x0: hit/selected channels 0x1:all channels
-    } else if(compressMode == daq_metadata_types::compressModeTypes::TRIGGEREDCHANNELS){
-      BroadcastCommand("aget * mode 0x0",FEMArray);//Mode: 0x0: hit/selected channels 0x1:all channels    
-    }
-  //BroadcastCommand("aget * tst_digout 1",FEMArray);//??
+  if(configure){
+    //BroadcastCommand("daq 0x000000 F",FEMArray,false);
+    BroadcastCommand("DAQ 0",FEMArray);
+    BroadcastCommand("daq 0xFFFFFF F",FEMArray);
+    BroadcastCommand("sca enable 0",FEMArray);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    BroadcastCommand("serve_target 0",FEMArray);
+    std::this_thread::sleep_for(std::chrono::seconds(4));
+    //Readout settings
+    BroadcastCommand("modify_hit_reg 0",FEMArray);
+    BroadcastCommand("emit_hit_cnt 1",FEMArray);
+    BroadcastCommand("emit_empty_ch 1",FEMArray);
+    BroadcastCommand("emit_lst_cell_rd 1",FEMArray);
+    BroadcastCommand("keep_rst 1",FEMArray);
+    BroadcastCommand("skip_rst 0",FEMArray);
+    //AGET settings
+      if(compressMode == daq_metadata_types::compressModeTypes::ALLCHANNELS || compressMode == daq_metadata_types::compressModeTypes::ZEROSUPPRESSION){
+        BroadcastCommand("aget 3:0 mode 0x1",FEMArray);//Mode: 0x0: hit/selected channels 0x1:all channels
+      } else if(compressMode == daq_metadata_types::compressModeTypes::TRIGGEREDCHANNELS){
+        BroadcastCommand("aget 3:0 mode 0x0",FEMArray);//Mode: 0x0: hit/selected channels 0x1:all channels    
+      }
+    //BroadcastCommand("aget * tst_digout 1",FEMArray);//??
 
-    for (auto &FEM : FEMArray){
-      char cmd[200];
-        for(int a=0;a<TRestRawDAQMetadata::nAsics;a++){
-          if(!FEM.fecMetadata.asic_isActive[a])continue;
-          sprintf(cmd, "aget %d dac 0x%X",a, FEM.fecMetadata.asic_coarseThr[a]);
-          SendCommand(cmd,FEM);
-          sprintf(cmd, "aget %d threshold 0x%X",a, FEM.fecMetadata.asic_fineThr[a]);
-          SendCommand(cmd,FEM);
-          sprintf(cmd, "aget %d mult_thr %d",a, FEM.fecMetadata.asic_multThr[a]);
-          SendCommand(cmd,FEM);
-          sprintf(cmd, "aget %d mult_limit %d",a, FEM.fecMetadata.asic_multLimit[a]);
-          SendCommand(cmd,FEM);
+      for (auto &FEM : FEMArray){
+        char cmd[200];
+          for(int a=0;a<TRestRawDAQMetadata::nAsics;a++){
+            if(!FEM.fecMetadata.asic_isActive[a])continue;
+            sprintf(cmd, "aget %d dac 0x%X",a, FEM.fecMetadata.asic_coarseThr[a]);
+            SendCommand(cmd,FEM);
+            sprintf(cmd, "aget %d threshold 0x%X",a, FEM.fecMetadata.asic_fineThr[a]);
+            SendCommand(cmd,FEM);
+            sprintf(cmd, "mult_thr %d 0x%X",a, FEM.fecMetadata.asic_multThr[a]);
+            SendCommand(cmd,FEM);
+            sprintf(cmd, "mult_limit %d 0x%X",a, FEM.fecMetadata.asic_multLimit[a]);
+            SendCommand(cmd,FEM);
+          }
+      }
+
+      if(compressMode == daq_metadata_types::compressModeTypes::ZEROSUPPRESSION){
+        BroadcastCommand("zero_suppress 1",FEMArray);
+        BroadcastCommand("zs_pre_post 8 4",FEMArray);
+      } else {
+        BroadcastCommand("zero_suppress 0",FEMArray);
+        BroadcastCommand("zs_pre_post 0 0",FEMArray);
+      }
+
+      //Event generator
+      BroadcastCommand("clr tstamp",FEMArray);
+      BroadcastCommand("clr evcnt",FEMArray);
+      BroadcastCommand("event_limit 0x0",FEMArray);//Infinite
+        if (triggerType ==  daq_metadata_types::triggerTypes::INTERNAL){
+          BroadcastCommand("trig_rate 1 10",FEMArray);
+          BroadcastCommand("trig_ena 0x1",FEMArray);
+        } else if (triggerType ==  daq_metadata_types::triggerTypes::TCM) {
+          BroadcastCommand("trig_ena 0x8",FEMArray);//tcm???
+        } else if (triggerType ==  daq_metadata_types::triggerTypes::AUTO) {
+          BroadcastCommand("trig_ena 0x0",FEMArray);
         }
     }
-  BroadcastCommand("subtract_ped 1",FEMArray);
-
-    if(compressMode == daq_metadata_types::compressModeTypes::ZEROSUPPRESSION){
-      BroadcastCommand("zero_suppress 1",FEMArray);
-      BroadcastCommand("zs_pre_post 8 4",FEMArray);
-    } else {
-      BroadcastCommand("zero_suppress 0",FEMArray);
-      BroadcastCommand("zs_pre_post 8 4",FEMArray);
-    }
-
-    //Event generator
-    BroadcastCommand("clr tstamp",FEMArray);
-    BroadcastCommand("clr evnct",FEMArray);
-    BroadcastCommand("event_limit 0x0",FEMArray);//Infinite
-      if (triggerType ==  daq_metadata_types::triggerTypes::INTERNAL){
-        BroadcastCommand("trig_rate 1 50",FEMArray);
-        BroadcastCommand("trig_enable 0x1",FEMArray);
-      } else if (triggerType ==  daq_metadata_types::triggerTypes::TCM) {
-        BroadcastCommand("trig_enable 0x8",FEMArray);//tcm???
-      } else if (triggerType ==  daq_metadata_types::triggerTypes::AUTO) {
-        BroadcastCommand("trig_enable 0x0",FEMArray);
-      }
 
     BroadcastCommand("serve_target 1",FEMArray);//1: send to DAQ
     BroadcastCommand("sca enable 1",FEMArray);//Enable data taking
@@ -306,11 +305,15 @@ void TRESTDAQARC::dataTaking() {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
       }
     BroadcastCommand("sca enable 0",FEMArray);
-    BroadcastCommand("daq 0xFFFFFF F",FEMArray,false);//Stop DAQ request
+    BroadcastCommand("serve_target 0",FEMArray);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    BroadcastCommand("DAQ 0",FEMArray);
+    BroadcastCommand("daq 0xFFFFFF F",FEMArray);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));//Wait some time till DAQ command is propagated
 }
 
 void TRESTDAQARC::stopDAQ() {
+  
   stopReceiver = true;
   receiveThread.join();
   eventBuilderThread.join();
@@ -344,12 +347,12 @@ void TRESTDAQARC::SendCommand(const char* cmd, FEMProxy &FEM, bool wait ){
       //lock.lock();
       FEM.cmd_sent++;
       //lock.unlock();
-      waitForCmd(FEM);
+      waitForCmd(FEM, cmd);
     }
 
 }
 
-void TRESTDAQARC::waitForCmd(FEMProxy &FEM){
+void TRESTDAQARC::waitForCmd(FEMProxy &FEM, const char* cmd){
 
   int timeout = 0;
   bool condition;
@@ -360,11 +363,11 @@ void TRESTDAQARC::waitForCmd(FEMProxy &FEM){
       condition = (FEM.cmd_sent > FEM.cmd_rcv);
       lock.unlock();
       timeout++;
-    } while ( condition && timeout <10);
+    } while ( condition && timeout <20);
 
   if (verboseLevel >= TRestStringOutput::REST_Verbose_Level::REST_Debug)std::cout<<"Cmd sent "<<FEM.cmd_sent<<" Cmd Received: "<<FEM.cmd_rcv<<std::endl;
 
-  if(timeout>=10)std::cout<<"Cmd timeout "<<std::endl;
+  if(timeout>=20)std::cout<<"Cmd timeout "<<cmd<<std::endl;
 }
 
 void TRESTDAQARC::ReceiveThread( std::vector<FEMProxy> *FEMA ) {
@@ -387,13 +390,12 @@ void TRESTDAQARC::ReceiveThread( std::vector<FEMProxy> *FEMA ) {
           smax = FEM.client;
     }
   smax++;
-
+  int err=0;
     while (!stopReceiver){
 
       // Copy the read fds from what we computed outside of the loop
       readfds_work = readfds;
 
-        int err =0;
         // Wait for any of these sockets to be ready
         if ((err = select(smax, &readfds_work, &writefds, &exceptfds, &t_timeout)) < 0){
            std::string error ="select failed: " + std::string(strerror(errno));
@@ -421,14 +423,10 @@ void TRESTDAQARC::ReceiveThread( std::vector<FEMProxy> *FEMA ) {
 
               if (verboseLevel >= TRestStringOutput::REST_Verbose_Level::REST_Debug)ARCPacket::DataPacket_Print(&buf_rcv[1], size-1);
 
-                if(!ARCPacket::isDataFrame(&buf_rcv[1])){
-                  //lock.lock();
-                  FEM.cmd_rcv++;
-                  //lock.unlock();
-                } else {
+                if(ARCPacket::isDataFrame(&buf_rcv[1])) {
                   std::unique_lock<std::mutex> lock_mem(FEM.mutex_mem);
                   //const std::deque<uint16_t> frame (&buf_rcv[1], &buf_rcv[size -1]);
-                  FEM.buffer.insert(FEM.buffer.end(), &buf_rcv[1], &buf_rcv[size -1]);
+                  FEM.buffer.insert(FEM.buffer.end(), &buf_rcv[1], &buf_rcv[size]);
                   const size_t bufferSize = FEM.buffer.size();
                   lock_mem.unlock();
                     if (verboseLevel >= TRestStringOutput::REST_Verbose_Level::REST_Debug)
@@ -438,58 +436,80 @@ void TRESTDAQARC::ReceiveThread( std::vector<FEMProxy> *FEMA ) {
                       throw (TRESTDAQException(error));
                     }
 
-               }
+               } else if (ARCPacket::isMFrame(&buf_rcv[1]) && isPed){
+                  FEM.cmd_rcv++;
+                  std::unique_lock<std::mutex> lock_mem(FEM.mutex_mem);
+                  //const std::deque<uint16_t> frame (&buf_rcv[1], &buf_rcv[size -1]);
+                  FEM.buffer.insert(FEM.buffer.end(), &buf_rcv[1], &buf_rcv[size]);
+                  const size_t bufferSize = FEM.buffer.size();
+                  lock_mem.unlock();
+                  if (verboseLevel == TRestStringOutput::REST_Verbose_Level::REST_Info)ARCPacket::DataPacket_Print(&buf_rcv[1], size-1);
+                } else {
+                  //lock.lock();
+                  FEM.cmd_rcv++;
+                  //lock.unlock();
+                }
             }
           }
 
         }
     }
+
+  std::cout<<"End of receive Thread "<<err<<std::endl;
+
 }
 
 void TRESTDAQARC::EventBuilderThread(std::vector<FEMProxy> *FEMA, TRestRun *rR, TRestRawSignalEvent* sEvent){
 
   sEvent->Initialize();
 
-  uint32_t ev_count;
-  uint64_t ts;
+  uint32_t ev_count=0;
+  uint64_t ts=0;
 
-  bool newEvent = false;
-  bool pendingEvent = false;
+  bool newEvent = true;
+  bool emptyBuffer = true;
 
-  while (!stopReceiver ){
-
+  do {
+    emptyBuffer=true;
       for (auto &FEM : *FEMA){
         std::unique_lock<std::mutex> lock(FEM.mutex_mem);
-        if(!FEM.buffer.empty()){//Do nothing
+        emptyBuffer &= FEM.buffer.empty();
+        if(!FEM.buffer.empty()){
           if(FEM.pendingEvent){//Wait till we reach end of event for all the ARC
             FEM.pendingEvent = !ARCPacket::GetNextEvent( FEM.buffer, sEvent, ts, ev_count);
-          } else if( !FEM.pendingEvent && !pendingEvent) {
-            FEM.pendingEvent = !ARCPacket::GetNextEvent( FEM.buffer, sEvent, ts, ev_count);
-            newEvent=true;
           }
         }
         lock.unlock();
       }
 
-        pendingEvent=false;
-
+        newEvent = true;
         for (const auto &FEM : *FEMA){
-          //std::unique_lock<std::mutex> lock(FEM.mutex_mem);
-            if(FEM.pendingEvent)pendingEvent=true;//Check if the event is pending
-          //lock.unlock();
+            newEvent &= !FEM.pendingEvent;//Check if the event is pending
         }
 
-      if(newEvent && !pendingEvent){//Save Event if closed
+      if(newEvent){//Save Event if closed
         if(rR){
           sEvent->SetID(ev_count);
           sEvent->SetTime( rR->GetStartTimestamp() + (double) ts * 2E-8 );
           FillTree(rR, sEvent);
           sEvent->Initialize();
-          newEvent = false;
           if(event_cnt%100 == 0)std::cout<<"Events "<<event_cnt<<std::endl;
+            for (auto &FEM : *FEMA)FEM.pendingEvent = true;
         }
       }
-  }
+
+    if(emptyBuffer)std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  } while(!(emptyBuffer && stopReceiver));
+
+  //Save pedestal event
+  if(isPed && emptyBuffer){
+        if(rR){
+          sEvent->SetID(ev_count);
+          sEvent->SetTime( rR->GetStartTimestamp() + (double) ts * 2E-8 );
+          FillTree(rR, sEvent);
+          sEvent->Initialize();
+        }
+      }
 
 }
 

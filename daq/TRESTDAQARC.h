@@ -24,7 +24,7 @@ class TRESTDAQARC : public TRESTDAQ {
     TRESTDAQARC(TRestRun* rR, TRestRawDAQMetadata* dM);
 
     void configure() override;
-    void startDAQ() override;
+    void startDAQ(bool configure=true) override;
     void stopDAQ() override;
     void initialize() override;
     void startUp() override;
@@ -32,14 +32,13 @@ class TRESTDAQARC : public TRESTDAQ {
     static void ReceiveThread(std::vector<FEMProxy> *FEMA);
     static void ReceiveBuffer(FEMProxy &FEM);
     static void EventBuilderThread(std::vector<FEMProxy> *FEMA, TRestRun *rR, TRestRawSignalEvent* sEvent);
-    static void waitForCmd(FEMProxy &FEM);
+    static void waitForCmd(FEMProxy &FEM, const char* cmd);
     static std::atomic<bool> stopReceiver;
-
-    inline static std::mutex mutex;
+    static std::atomic<bool> isPed;
 
   private:
     void pedestal();
-    void dataTaking();
+    void dataTaking(bool configure=true);
     void BroadcastCommand(const char* cmd, std::vector<FEMProxy> &FEMA, bool wait=true);
     void SendCommand(const char* cmd, FEMProxy &FEM, bool wait=true);
 
