@@ -308,7 +308,7 @@ void TRESTDAQFEMINOS::dataTaking(bool configure) {
       }
     BroadcastCommand("sca enable 0",FEMArray);
     BroadcastCommand("serve_target 0",FEMArray);
-    BroadcastCommand("daq 0xFFFFFF F",FEMArray,false);//Stop DAQ request
+    BroadcastCommand("DAQ 0",FEMArray,false);//Stop DAQ request
     std::this_thread::sleep_for(std::chrono::milliseconds(500));//Wait some time till DAQ command is propagated
 }
 

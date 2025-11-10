@@ -179,7 +179,9 @@ namespace ARCPacket {
   int HistoStat_Print (uint16_t *fr, int &sz_rd, const uint16_t &hitCount);
   uint32_t GetUInt32FromBuffer(uint16_t *fr, int & sz_rd);
   uint32_t GetUInt32FromBufferInv(uint16_t *fr, int & sz_rd);
-  bool GetNextEvent(std::deque <uint16_t> &buffer, TRestRawSignalEvent* sEvent, uint64_t &tS, uint32_t &ev_count);
+  bool TryExtractNextEvent(std::deque<uint16_t>& buffer, size_t &idx, std::deque<uint16_t>& out);
+  void ParseEventFromWords(std::deque<uint16_t> &event, TRestRawSignalEvent* sEvent, uint64_t &tS, uint32_t &ev_count);
+  void GetPedestalEvent(std::deque <uint16_t> &buffer, TRestRawSignalEvent* sEvent);
   bool isDataFrame(uint16_t *fr);
   bool isMFrame(uint16_t *fr);
 
