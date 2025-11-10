@@ -351,118 +351,205 @@ uint32_t ARCPacket::GetUInt32FromBufferInv(uint16_t *fr, int & sz_rd){
   return res;
 }
 
-bool ARCPacket::GetNextEvent(std::deque <uint16_t> &buffer, TRestRawSignalEvent* sEvent, uint64_t &tS, uint32_t &ev_count){
+bool ARCPacket::TryExtractNextEvent(std::deque<uint16_t>& buffer, size_t &idx, std::deque<uint16_t>& out){
+
+  if(buffer.empty())return false;
 
   bool endOfEvent = false;
-  //std::cout<<__PRETTY_FUNCTION__<<" START "<<buffer.size()<<std::endl;
-  //std::cout<<__PRETTY_FUNCTION__<<"  "<<buffer.size()<<std::endl;
-  while (!endOfEvent && !buffer.empty()){
-    //std::cout<<"Val 0x"<<std::hex<<buffer.front()<<std::dec<<" " <<buffer.front()<<std::endl;
+  const size_t buffSize = buffer.size();
 
-    //TimeStamp and Event Count, once for every event
-    if ((buffer.front() & PFX_9_BIT_CONTENT_MASK) == PFX_START_OF_DFRAME){
-      buffer.pop_front();
-      //std::cout<<"Start of DFRAME Size "<<buffer.front()<<" bytes"<<std::endl;
-      buffer.pop_front();
-    } else if ((buffer.front() & PFX_9_BIT_CONTENT_MASK) == PFX_START_OF_MFRAME){
-      buffer.pop_front();
-      //std::cout<<"Start of MFRAME Size "<<buffer.front()<<" bytes"<<std::endl;
-      buffer.pop_front();
-    } else if ((buffer.front() & PFX_0_BIT_CONTENT_MASK) == PFX_EXTD_CARD_CHIP_CHAN_H_MD) {
-      std::vector<Short_t> sData;
-      buffer.pop_front();
-      uint16_t cardID = GET_EXTD_CARD_IX(buffer.front());
-      uint16_t chipID = GET_EXTD_CHIP_IX(buffer.front());
-      uint16_t chID = GET_EXTD_CHAN_IX(buffer.front());
-      int physChannel = chID + chipID*72 + cardID*288;
-      buffer.pop_front();
-      uint32_t mean = buffer.front();
-      sData.push_back(buffer.front());
-      buffer.pop_front();
-      mean |=  ( buffer.front() << 16);
-      sData.push_back(buffer.front());
-      buffer.pop_front();
-      uint32_t std_dev = buffer.front();
-      sData.push_back(buffer.front());
-      buffer.pop_front();
-      sData.push_back(buffer.front());
-      std_dev |=  ( buffer.front() << 16);
-      buffer.pop_front();
-      //printf("Ped Channel %02d Mean/Std_dev : %.2f  %.2f\n", physChannel, (float)mean/100., (float)std_dev/100.);
-      TRestRawSignal rawSignal(physChannel, sData);
-      sEvent->AddSignal(rawSignal);
-    } else if ((buffer.front() & PFX_8_BIT_CONTENT_MASK) == PFX_START_OF_EVENT){
+    while (idx< buffSize){
+      uint16_t w = buffer[idx];
+      if ((w & PFX_9_BIT_CONTENT_MASK) == PFX_START_OF_DFRAME){
+        idx +=2;
+      } else if ((w & PFX_9_BIT_CONTENT_MASK) == PFX_START_OF_MFRAME){
+        idx +=2;
+      } else if ((w & PFX_0_BIT_CONTENT_MASK) == PFX_EXTD_CARD_CHIP_CHAN_H_MD) {
+        idx +=6;
+      } else if ( (w & PFX_8_BIT_CONTENT_MASK) == PFX_START_OF_EVENT) {
+        idx +=6;
+      } else if ( (w & PFX_9_BIT_CONTENT_MASK) == PFX_CHIP_CHAN_HIT_CNT) {
+        idx++;
+      } else if ((w & PFX_11_BIT_CONTENT_MASK) == PFX_CHIP_LAST_CELL_READ) {
+        idx++;
+      } else if ( (w & PFX_0_BIT_CONTENT_MASK) == PFX_EXTD_CARD_CHIP_CHAN_HIT_IX ) {
+        idx +=2;
+      } else if ((w & PFX_12_BIT_CONTENT_MASK) == PFX_ADC_SAMPLE || (w & PFX_9_BIT_CONTENT_MASK ) == PFX_TIME_BIN_IX ) {
+        idx++;
+      } else if ( (w & PFX_6_BIT_CONTENT_MASK) == PFX_END_OF_EVENT ){
+        idx +=4;
+        endOfEvent = true;
+        break;
+      } else if ( (w & PFX_0_BIT_CONTENT_MASK) == PFX_END_OF_FRAME ){
+        idx++;
+      } else {
+        printf("TryExtractNextEvent WARNING: word : 0x%x (%d) unknown data at %d \n", w, w, idx);
+        idx++;
+      }
+  }
+
+  if (!endOfEvent){
+    return false; //incomplete event
+  }
+
+  //std::cout<<"New event size "<<idx<<std::endl;
+
+  out.assign(buffer.begin(), buffer.begin() + idx );
+  buffer.erase(buffer.begin(), buffer.begin() + idx );
+
+  idx=0;
+
+  return true;
+}
+
+void ARCPacket::ParseEventFromWords(std::deque<uint16_t> &event, TRestRawSignalEvent* sEvent, uint64_t &tS, uint32_t &ev_count){
+
+  if(event.empty())return;
+  size_t idx=0;
+  const size_t buffSize = event.size();
+
+
+   while (idx< buffSize){
+     size_t w = event[idx];
+    if ((w & PFX_9_BIT_CONTENT_MASK) == PFX_START_OF_DFRAME){
+      idx ++;
+      //std::cout<<"Start of DFRAME Size "<<event[idx]<<" bytes"<<std::endl;
+      idx++;
+    } else if ((w & PFX_9_BIT_CONTENT_MASK) == PFX_START_OF_MFRAME){
+      idx ++;
+      //std::cout<<"Start of MFRAME Size "<<event[idx]<<" bytes"<<std::endl;
+      idx++;
+    } else if ((w & PFX_0_BIT_CONTENT_MASK) == PFX_EXTD_CARD_CHIP_CHAN_H_MD) {
+      idx +=6;//We skip in case, this is done on GetPedestalEvent
+    } else if ((w & PFX_8_BIT_CONTENT_MASK) == PFX_START_OF_EVENT){
       //std::cout<<"START OF EVENT "<<std::endl;
-      buffer.pop_front();
-      tS = buffer.front() & 0xFFFF;
-      buffer.pop_front();
-      tS |= ( buffer.front() << 16) & 0xFFFF0000;
-      buffer.pop_front();
-      tS |= ( buffer.front() << 24) & 0xFFFF00000000;
-      buffer.pop_front();
+      idx++;
+      tS = event[idx] & 0xFFFF;
+      idx++;
+      tS |= ( event[idx] << 16) & 0xFFFF0000;
+      idx++;
+      tS |= ( event[idx] << 24) & 0xFFFF00000000;
+      idx++;
 
       //Event count
-      ev_count = buffer.front();
-      buffer.pop_front();
-      ev_count |=  ( buffer.front() << 16);
-      buffer.pop_front();
-
+      ev_count = event[idx];
+      idx++;
+      ev_count |=  ( event[idx] << 16);
+      idx++;
       //std::cout<<"EvCnt "<<ev_count<<" TS "<<tS <<std::endl;
-    } else if ((buffer.front() & PFX_9_BIT_CONTENT_MASK) == PFX_CHIP_CHAN_HIT_CNT) {
-      //printf( "Card %02d Chip %01d Channel_Hit_Count %02d\n", GET_CARD_IX(buffer.front()), GET_CHIP_IX(buffer.front()), GET_CHAN_IX(buffer.front()) );
-      buffer.pop_front();
-    } else if ((buffer.front() & PFX_11_BIT_CONTENT_MASK) == PFX_CHIP_LAST_CELL_READ) {
-      buffer.pop_front();
-    } else if ( (buffer.front() & PFX_0_BIT_CONTENT_MASK) == PFX_EXTD_CARD_CHIP_CHAN_HIT_IX ) {
-      buffer.pop_front();
-      uint16_t cardID = GET_CARD_IX(buffer.front());
-      uint16_t chipID = GET_CHIP_IX(buffer.front());
-      uint16_t chID = GET_CHAN_IX(buffer.front());
+    } else if ((w & PFX_9_BIT_CONTENT_MASK) == PFX_CHIP_CHAN_HIT_CNT) {
+      //printf( "Card %02d Chip %01d Channel_Hit_Count %02d\n", GET_CARD_IX(event[idx]), GET_CHIP_IX(event[idx]), GET_CHAN_IX(event[idx]) );
+      idx++;
+    } else if ((w & PFX_11_BIT_CONTENT_MASK) == PFX_CHIP_LAST_CELL_READ) {
+      idx++;
+    } else if ( (w & PFX_0_BIT_CONTENT_MASK) == PFX_EXTD_CARD_CHIP_CHAN_HIT_IX ) {
+      idx++;
+      uint16_t cardID = GET_CARD_IX(event[idx]);
+      uint16_t chipID = GET_CHIP_IX(event[idx]);
+      uint16_t chID = GET_CHAN_IX(event[idx]);
       int physChannel = chID + chipID*72 + cardID*288;
       //std::cout<<" Card "<<cardID<<" Chip "<<chipID<<" Channel "<<chID<<" PhysChann "<<physChannel<<std::endl;
-      buffer.pop_front();
+      idx++;
       int timeBin=0;
       std::vector<Short_t> sData(512,0);
-        while( (buffer.front() & PFX_12_BIT_CONTENT_MASK) == PFX_ADC_SAMPLE ||
-               (buffer.front() & PFX_9_BIT_CONTENT_MASK ) == PFX_TIME_BIN_IX ){
+        while( (event[idx] & PFX_12_BIT_CONTENT_MASK) == PFX_ADC_SAMPLE ||
+               (event[idx] & PFX_9_BIT_CONTENT_MASK ) == PFX_TIME_BIN_IX ){
 
-            if ((buffer.front() & PFX_9_BIT_CONTENT_MASK) == PFX_TIME_BIN_IX) {
-              timeBin = GET_TIME_BIN(buffer.front());
-            } else if ((buffer.front() & PFX_12_BIT_CONTENT_MASK) == PFX_ADC_SAMPLE) {
-              if(timeBin<512)sData[timeBin] = GET_ADC_DATA(buffer.front());
-              //std::cout<<"TimeBin "<<timeBin<<" "<<GET_ADC_DATA(buffer.front())<<std::endl;
+            if ((event[idx] & PFX_9_BIT_CONTENT_MASK) == PFX_TIME_BIN_IX) {
+              timeBin = GET_TIME_BIN(event[idx]);
+            } else if ((event[idx] & PFX_12_BIT_CONTENT_MASK) == PFX_ADC_SAMPLE) {
+              if(timeBin<512)sData[timeBin] = GET_ADC_DATA(event[idx]);
+              //std::cout<<"TimeBin "<<timeBin<<" "<<sData[timeBin]<<std::endl;
               timeBin++;
+            } else {
+              break;
             }
-          buffer.pop_front();
-          if(buffer.empty())break;
+          idx++;
+          if(idx>=buffSize)break;
         }
 
       TRestRawSignal rawSignal(physChannel, sData);
       sEvent->AddSignal(rawSignal);
 
-    } else if ( (buffer.front() & PFX_6_BIT_CONTENT_MASK) == PFX_END_OF_EVENT ){
-      endOfEvent=true;
-      buffer.pop_front();
-      buffer.pop_front();
-      //uint32_t event_size = buffer.front() & 0xFFFF;
-      buffer.pop_front();
-      //event_size |=  ( buffer.front() << 16) & 0xFFFF0000;
-      buffer.pop_front();
+    } else if ( (w & PFX_6_BIT_CONTENT_MASK) == PFX_END_OF_EVENT ){
+      idx +=2;
+      //uint32_t event_size = event[idx] & 0xFFFF;
+      idx++;
+      //event_size |=  ( event[idx] << 16) & 0xFFFF0000;
+      idx++;
       //std::cout<<"END OF EVENT"<<std::endl;
-      break;
-    } else if ( (buffer.front() & PFX_0_BIT_CONTENT_MASK) == PFX_END_OF_FRAME ){
+      return;
+    } else if ( (w & PFX_0_BIT_CONTENT_MASK) == PFX_END_OF_FRAME ){
       //std::cout<<" END OF FRAME "<<std::endl;
-      buffer.pop_front();
-      break;
+      idx++;
     } else {
-      printf("WARNING: word : 0x%x (%d) unknown data\n", buffer.front(), buffer.front());
-      buffer.pop_front();
+      printf("WARNING: event %d word : 0x%x (%d) unknown data\n", ev_count, event.front(), event.front());
+      idx++;
     }
-    //std::cout<<"Buffer size left "<<buffer.size()<<" words "<<std::endl;
+    //std::cout<<"Buffer size left "<<buffSize-idx<<" words "<<std::endl;
   }
-  //std::cout<<__PRETTY_FUNCTION__<<" END "<<buffer.size()<<std::endl;
-  return endOfEvent;
 
+}
+
+void ARCPacket::GetPedestalEvent(std::deque <uint16_t> &buffer, TRestRawSignalEvent* sEvent){
+
+  size_t idx = 0;
+
+  if(buffer.empty())return;
+  
+     while (idx< buffer.size()){
+      uint16_t w = buffer[idx];
+      if ((w & PFX_9_BIT_CONTENT_MASK) == PFX_START_OF_DFRAME){
+        idx +=2;
+      } else if ((w & PFX_9_BIT_CONTENT_MASK) == PFX_START_OF_MFRAME){
+        idx +=2;
+      } else if ((w & PFX_0_BIT_CONTENT_MASK) == PFX_EXTD_CARD_CHIP_CHAN_H_MD) {
+        std::vector<Short_t> sData;
+        idx++;
+        w = buffer[idx];
+        uint16_t cardID = GET_EXTD_CARD_IX(w);
+        uint16_t chipID = GET_EXTD_CHIP_IX(w);
+        uint16_t chID = GET_EXTD_CHAN_IX(w);
+        int physChannel = chID + chipID*72 + cardID*288;
+        idx++;
+        w = buffer[idx];
+        uint32_t mean = w;
+        sData.push_back(w);
+        idx++;
+        w = buffer[idx];
+        mean |=  ( w << 16);
+        sData.push_back(w);
+        idx++;
+        w = buffer[idx];
+        uint32_t std_dev = w;
+        sData.push_back(w);
+        idx++;
+        w = buffer[idx];
+        sData.push_back(w);
+        std_dev |=  ( w << 16);
+        idx++;
+        //printf("Ped Card %02d Chip %01d Channel %02d PhysChannel %02d Mean/Std_dev : %.2f  %.2f\n", cardID, chipID, chID, physChannel, (float)mean/100., (float)std_dev/100.);
+        TRestRawSignal rawSignal(physChannel, sData);
+        sEvent->AddSignal(rawSignal);
+      } else if ( (w & PFX_8_BIT_CONTENT_MASK) == PFX_START_OF_EVENT) {
+        idx +=6;
+      } else if ( (w & PFX_9_BIT_CONTENT_MASK) == PFX_CHIP_CHAN_HIT_CNT) {
+        idx++;
+      } else if ((w & PFX_11_BIT_CONTENT_MASK) == PFX_CHIP_LAST_CELL_READ) {
+        idx++;
+      } else if ( (w & PFX_0_BIT_CONTENT_MASK) == PFX_EXTD_CARD_CHIP_CHAN_HIT_IX ) {
+        idx +=2;
+      } else if ((w & PFX_12_BIT_CONTENT_MASK) == PFX_ADC_SAMPLE || (w & PFX_9_BIT_CONTENT_MASK ) == PFX_TIME_BIN_IX ) {
+        idx++;
+      } else if ( (w & PFX_6_BIT_CONTENT_MASK) == PFX_END_OF_EVENT ){
+        idx +=4;
+        break;
+      } else if ( (w & PFX_0_BIT_CONTENT_MASK) == PFX_END_OF_FRAME ){
+        idx++;
+      } else {
+        idx++;
+      }
+  }
 }
 
 bool ARCPacket::isDataFrame(uint16_t *fr){

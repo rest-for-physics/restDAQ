@@ -141,7 +141,8 @@ void TRESTDAQARC::configure() {
           sprintf(cmd, "aget %d time 0x%X",a, (FEM.fecMetadata.asic_shappingTime[a] & 0xF) );  //Shapping time
           SendCommand(cmd,FEM);
         }
-      SendCommand("aget 3:0 dac 0x0",FEM);
+      SendCommand("aget 3:0 dac 0x1",FEM);
+      SendCommand("aget 3:0 in_dyn_range 1",FEM);
     }
 }
 
@@ -180,11 +181,12 @@ void TRESTDAQARC::pedestal() {
   BroadcastCommand("subtract_ped 0",FEMArray);
   BroadcastCommand("zero_suppress 0",FEMArray);
   BroadcastCommand("zs_pre_post 0 0",FEMArray);
-  BroadcastCommand("thr * * 0x0",FEMArray);
+  BroadcastCommand("thr 3:0 * 0x0",FEMArray);
   //Event generator
   BroadcastCommand("event_limit 0x2",FEMArray);//# Event limit: 0x0:infinite; 0x1:1; 0x2:10; 0x3:100; 0x4: 1000; 0x5:10000; 0x6:100000; 0x7:1000000
   BroadcastCommand("trig_rate 1 10",FEMArray);//# Range: 0:0.1Hz-10Hz 1:10Hz-1kHz 2:100Hz-10kHz 3:1kHz-100kHz
   BroadcastCommand("trig_ena 0x1",FEMArray);
+  BroadcastCommand("sca autostart 1",FEMArray);
   //Pedestal Histograms
   BroadcastCommand("hped 3:0 * offset 0",FEMArray);
   BroadcastCommand("hped 3:0 * clr",FEMArray);
@@ -219,6 +221,7 @@ void TRESTDAQARC::pedestal() {
   std::this_thread::sleep_for(std::chrono::seconds(15));// Wait pedestal accumulation completion
   BroadcastCommand("sca enable 0",FEMArray);
   BroadcastCommand("trig_ena 0x0",FEMArray);
+  std::this_thread::sleep_for(std::chrono::seconds(1));
     for (auto &FEM : FEMArray){
       for(int a=0;a<TRestRawDAQMetadata::nAsics;a++){
         if(!FEM.fecMetadata.asic_isActive[a])continue;
@@ -231,14 +234,14 @@ void TRESTDAQARC::pedestal() {
     }
 
   //Set Data server target to DAQ
-  BroadcastCommand("serve_target 1",FEMArray);
+  BroadcastCommand("serve_target 0",FEMArray);
 }
 
 void TRESTDAQARC::dataTaking(bool configure) {
   std::cout << "Starting data taking run" << std::endl;
   if(configure){
     //BroadcastCommand("daq 0x000000 F",FEMArray,false);
-    BroadcastCommand("DAQ 0",FEMArray);
+    BroadcastCommand("DAQ 0",FEMArray, false);
     BroadcastCommand("daq 0xFFFFFF F",FEMArray);
     BroadcastCommand("sca enable 0",FEMArray);
     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -295,6 +298,7 @@ void TRESTDAQARC::dataTaking(bool configure) {
           BroadcastCommand("trig_ena 0x0",FEMArray);
         }
     }
+    BroadcastCommand("trig_delay 0x900", FEMArray); //TODO make configurable
 
     BroadcastCommand("serve_target 1",FEMArray);//1: send to DAQ
     BroadcastCommand("sca enable 1",FEMArray);//Enable data taking
@@ -302,19 +306,21 @@ void TRESTDAQARC::dataTaking(bool configure) {
       //Wait till DAQ completion
       while ( !abrt && !nextFile && (daqMetadata->GetNEvents() == 0 || event_cnt < daqMetadata->GetNEvents())) {
         //Do something here? E.g. send packet request
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
       }
+    //BroadcastCommand("trig_ena 0",FEMArray);
     BroadcastCommand("sca enable 0",FEMArray);
     BroadcastCommand("serve_target 0",FEMArray);
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    BroadcastCommand("DAQ 0",FEMArray);
-    BroadcastCommand("daq 0xFFFFFF F",FEMArray);
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));//Wait some time till DAQ command is propagated
+    BroadcastCommand("DAQ 0",FEMArray, false);
+    //BroadcastCommand("daq 0x000000",FEMArray);
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));//Wait for DAQ completion
 }
 
 void TRESTDAQARC::stopDAQ() {
   
+  //std::this_thread::sleep_for(std::chrono::seconds(1));
   stopReceiver = true;
+
   receiveThread.join();
   eventBuilderThread.join();
 
@@ -334,19 +340,19 @@ void TRESTDAQARC::BroadcastCommand(const char* cmd, std::vector<FEMProxy> &FEMA,
 
 void TRESTDAQARC::SendCommand(const char* cmd, FEMProxy &FEM, bool wait ){
    //if(abrt)return;
-   std::unique_lock<std::mutex> lock(FEM.mutex_socket);
-   if (sendto (FEM.client, cmd, strlen(cmd), 0, (struct sockaddr*)&(FEM.target), sizeof(struct sockaddr)) == -1) {
+   {
+   FEM.mutex_socket.lock();
+   const int e = sendto (FEM.client, cmd, strlen(cmd), 0, (struct sockaddr*)&(FEM.target), sizeof(struct sockaddr));
+   FEM.mutex_socket.unlock();
+   if ( e == -1) {
      std::string error ="sendto failed: " + std::string(strerror(errno));
      throw (TRESTDAQException(error));
    }
-
-  lock.unlock();
+  }
   if (verboseLevel >= TRestStringOutput::REST_Verbose_Level::REST_Debug)std::cout<<"FEM "<<FEM.fecMetadata.id<<" Command sent "<<cmd<<std::endl;
 
     if(wait){
-      //lock.lock();
       FEM.cmd_sent++;
-      //lock.unlock();
       waitForCmd(FEM, cmd);
     }
 
@@ -355,13 +361,11 @@ void TRESTDAQARC::SendCommand(const char* cmd, FEMProxy &FEM, bool wait ){
 void TRESTDAQARC::waitForCmd(FEMProxy &FEM, const char* cmd){
 
   int timeout = 0;
-  bool condition;
+  bool condition = false;
 
     do {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      std::unique_lock<std::mutex> lock(FEM.mutex_socket);
       condition = (FEM.cmd_sent > FEM.cmd_rcv);
-      lock.unlock();
       timeout++;
     } while ( condition && timeout <20);
 
@@ -406,29 +410,33 @@ void TRESTDAQARC::ReceiveThread( std::vector<FEMProxy> *FEMA ) {
 
         for (auto &FEM : *FEMA){
 
-          if (FD_ISSET(FEM.client, &readfds_work)){
-            std::unique_lock<std::mutex> lock(FEM.mutex_socket);
-            uint16_t buf_rcv[8192/(sizeof(uint16_t))];
-            int length = recvfrom(FEM.client, buf_rcv, 8192, 0, (struct sockaddr*)&FEM.remote, &FEM.remote_size);
-            lock.unlock();
+        if (!FD_ISSET(FEM.client, &readfds_work))continue;
+
+        uint16_t buf_rcv[8192/(sizeof(uint16_t))];
+        int length = 0;
+        // protect socket operations
+          {
+            FEM.mutex_socket.lock();
+            length = recvfrom(FEM.client, buf_rcv, 8192, 0, (struct sockaddr*)&FEM.remote, &FEM.remote_size);
+            FEM.mutex_socket.unlock();
               if (length < 0) {
                 std::string error ="recvfrom failed: " + std::string(strerror(errno));
                 throw (TRESTDAQException(error));
               }
-
+          }
             if (verboseLevel >= TRestStringOutput::REST_Verbose_Level::REST_Debug)std::cout<<"Packet received with length "<<length<<" bytes"<<std::endl;
 
-            if(length>6){//empty frame?
+            if(length<= 6)continue; //empty frame?
               const size_t size = length/sizeof(uint16_t);//Note that length is in bytes while size is uint16_t
 
               if (verboseLevel >= TRestStringOutput::REST_Verbose_Level::REST_Debug)ARCPacket::DataPacket_Print(&buf_rcv[1], size-1);
 
                 if(ARCPacket::isDataFrame(&buf_rcv[1])) {
-                  std::unique_lock<std::mutex> lock_mem(FEM.mutex_mem);
                   //const std::deque<uint16_t> frame (&buf_rcv[1], &buf_rcv[size -1]);
+                  FEM.mutex_mem.lock();
                   FEM.buffer.insert(FEM.buffer.end(), &buf_rcv[1], &buf_rcv[size]);
                   const size_t bufferSize = FEM.buffer.size();
-                  lock_mem.unlock();
+                  FEM.mutex_mem.unlock();
                     if (verboseLevel >= TRestStringOutput::REST_Verbose_Level::REST_Debug)
                       std::cout<<"Packet buffered with size "<<(int)size-1<<" queue size: "<<bufferSize<<std::endl;
                     if( bufferSize > 1024*1024*1024){
@@ -437,21 +445,17 @@ void TRESTDAQARC::ReceiveThread( std::vector<FEMProxy> *FEMA ) {
                     }
 
                } else if (ARCPacket::isMFrame(&buf_rcv[1]) && isPed){
+                  FEM.mutex_mem.lock();
                   FEM.cmd_rcv++;
-                  std::unique_lock<std::mutex> lock_mem(FEM.mutex_mem);
                   //const std::deque<uint16_t> frame (&buf_rcv[1], &buf_rcv[size -1]);
                   FEM.buffer.insert(FEM.buffer.end(), &buf_rcv[1], &buf_rcv[size]);
                   const size_t bufferSize = FEM.buffer.size();
-                  lock_mem.unlock();
+                  FEM.mutex_mem.unlock();
                   if (verboseLevel == TRestStringOutput::REST_Verbose_Level::REST_Info)ARCPacket::DataPacket_Print(&buf_rcv[1], size-1);
                 } else {
-                  //lock.lock();
+                  //std::cout<<"Frame is neither data or monitoring Val 0x"<<std::hex<<buf_rcv[1]<<std::dec<<std::endl;
                   FEM.cmd_rcv++;
-                  //lock.unlock();
                 }
-            }
-          }
-
         }
     }
 
@@ -468,24 +472,27 @@ void TRESTDAQARC::EventBuilderThread(std::vector<FEMProxy> *FEMA, TRestRun *rR, 
 
   bool newEvent = true;
   bool emptyBuffer = true;
+  int tC =0;
 
   do {
     emptyBuffer=true;
+    newEvent = true;
+
       for (auto &FEM : *FEMA){
-        std::unique_lock<std::mutex> lock(FEM.mutex_mem);
+        if(isPed)continue;
+        std::deque <uint16_t> eventBuffer;
+        FEM.mutex_mem.lock();
         emptyBuffer &= FEM.buffer.empty();
         if(!FEM.buffer.empty()){
           if(FEM.pendingEvent){//Wait till we reach end of event for all the ARC
-            FEM.pendingEvent = !ARCPacket::GetNextEvent( FEM.buffer, sEvent, ts, ev_count);
+            FEM.pendingEvent = !ARCPacket::TryExtractNextEvent(FEM.buffer, FEM.bufferIndex, eventBuffer);
+            //!ARCPacket::GetNextEvent(FEM.buffer, sEvent, ts, ev_count);
           }
         }
-        lock.unlock();
+        FEM.mutex_mem.unlock();
+        if(!FEM.pendingEvent) ARCPacket::ParseEventFromWords(eventBuffer, sEvent, ts, ev_count);
+        newEvent &= !FEM.pendingEvent;//Check if the event is pending
       }
-
-        newEvent = true;
-        for (const auto &FEM : *FEMA){
-            newEvent &= !FEM.pendingEvent;//Check if the event is pending
-        }
 
       if(newEvent){//Save Event if closed
         if(rR){
@@ -498,11 +505,28 @@ void TRESTDAQARC::EventBuilderThread(std::vector<FEMProxy> *FEMA, TRestRun *rR, 
         }
       }
 
-    if(emptyBuffer)std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      if (stopReceiver && isPed){
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        break;
+      } else if (stopReceiver){
+         for (auto &FEM : *FEMA)
+           std::cout<<"Buffer size "<<FEM.buffer.size()<<std::endl;
+         tC++;
+
+         if(tC>=1000)break;
+      } else {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      }
+
   } while(!(emptyBuffer && stopReceiver));
 
   //Save pedestal event
-  if(isPed && emptyBuffer){
+  if(isPed){
+     for (auto &FEM : *FEMA){
+        FEM.mutex_mem.lock();
+        ARCPacket::GetPedestalEvent(FEM.buffer,sEvent);
+        FEM.mutex_mem.unlock();
+      }
         if(rR){
           sEvent->SetID(ev_count);
           sEvent->SetTime( rR->GetStartTimestamp() + (double) ts * 2E-8 );
@@ -510,6 +534,8 @@ void TRESTDAQARC::EventBuilderThread(std::vector<FEMProxy> *FEMA, TRestRun *rR, 
           sEvent->Initialize();
         }
       }
+
+ std::cout<<"End of event builder Thread "<<std::endl;
 
 }
 

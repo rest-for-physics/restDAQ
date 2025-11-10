@@ -20,6 +20,7 @@ class FEMProxy : public TRESTDAQSocket {
   public:
     FEMProxy(){ }
     bool pendingEvent=true;
+    size_t bufferIndex=0;
     TRestRawDAQMetadata::FECMetadata fecMetadata;
     //std::atomic_int
     int cmd_sent=0;
